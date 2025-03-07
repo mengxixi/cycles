@@ -69,7 +69,9 @@ def cycle_bisection_search(method, mu, L, nb_points, precision, cycle_length):
 
         gammas_cycle.append(gamma_max_cycle)
 
-    write_result_file(file_path="results/cycles/{}_mu{:.2f}_L{:.0f}_K{:.0f}.txt".format(method, mu, L, cycle_length),
+    logdir = "results/cycles"
+    fn = "{}_mu{:.2f}_L{:.0f}_K{:.0f}.txt".format(method, mu, L, cycle_length)
+    write_result_file(logdir=logdir, filename=fn,
                       gammas=gammas_cycle, betas=betas)
 
 

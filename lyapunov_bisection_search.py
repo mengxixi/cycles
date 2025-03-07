@@ -46,7 +46,9 @@ def lyapunov_bisection_search(method, mu, L, nb_points, precision, rho=1):
 
         gammas_lyap.append(gamma_min_lyap)
 
-    write_result_file(file_path="results/lyapunov/{}_mu{:.2f}_L{:.0f}.txt".format(method, mu, L),
+    logdir = "results/lyapunov"
+    fn = "{}_mu{:.2f}_L{:.0f}.txt".format(method, mu, L)
+    write_result_file(logdir=logdir, filename=fn,
                       gammas=gammas_lyap, betas=betas)
 
 

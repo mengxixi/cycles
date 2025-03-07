@@ -1,3 +1,4 @@
+import os
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib import cm
@@ -37,7 +38,11 @@ def read_result_file(file_path):
     return gammas, betas
 
 
-def write_result_file(file_path, gammas, betas):
+def write_result_file(logdir, filename, gammas, betas):
+    if not os.path.isdir(logdir):
+        os.makedirs(logdir)
+
+    file_path = os.path.join(logdir, filename)
     with open(file_path, "w") as f:
         f.write("gamma\tbeta\n")
         for gamma, beta in zip(gammas, betas):
@@ -158,7 +163,12 @@ def get_colored_graphics(method, mu, L, max_cycle_length, add_background=True, a
     labels = [""]
     fig.legend(handles, labels, bbox_to_anchor=(0.25, 1), title_fontsize=20, title="No conclusion", frameon=False)
 
-    plt.savefig(folder + "figures/{}_mu{:.2f}_L{:.0f}_colored.png".format(method, mu, L), bbox_inches="tight")
+    figdir = os.path.join(folder, "figures")
+    if not os.path.isdir(figdir):
+        os.makedirs(figdir)
+
+    figname = "{}_mu{:.2f}_L{:.0f}_colored.png".format(method, mu, L)
+    plt.savefig(figname, bbox_inches="tight")
 
 
 if __name__ == "__main__":

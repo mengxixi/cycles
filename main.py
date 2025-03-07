@@ -49,4 +49,5 @@ def run_all(list_algos, list_mus, nb_points, precision, max_cycle_length):
 
 if __name__ == "__main__":
 
-    run_all(list_algos=["HB", "NAG", "GD", "TOS"], list_mus=[0], nb_points=300, precision=10**-4, max_cycle_length=25)
+    # run_all(list_algos=["HB", "NAG", "GD", "TOS"], list_mus=[0], nb_points=300, precision=10**-4, max_cycle_length=25)
+    run_all(list_algos=["HB"], list_mus=[0.1], nb_points=300, precision=10**-4, max_cycle_length=25)
