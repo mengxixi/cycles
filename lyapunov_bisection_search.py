@@ -5,7 +5,7 @@ from math import inf
 import numpy as np
 
 from tools.file_management import bound, write_result_file
-from algorithms.heavy_ball.lyapunov import lyapunov_heavy_ball_momentum
+from algorithms.heavy_ball.lyapunov import lyapunov_heavy_ball_momentum_multistep
 from algorithms.nag.lyapunov import lyapunov_accelerated_gradient_strongly_convex
 from algorithms.inexact_gradient_descent.lyapunov import lyapunov_inexact_gradient_descent
 from algorithms.three_operator_splitting.lyapunov import lyapunov_three_operator_splitting
@@ -19,7 +19,7 @@ def lyapunov_bisection_search(method, mu, L, nb_points, precision, rho=1):
     gammas_min_lyap = np.zeros_like(betas)
     gammas_max_lyap = [bound(method=method, L=L, beta=beta) for beta in betas]
     if method == "HB":
-        lyapunov_search = lyapunov_heavy_ball_momentum
+        lyapunov_search = lyapunov_heavy_ball_momentum_multistep
     elif method == "NAG":
         lyapunov_search = lyapunov_accelerated_gradient_strongly_convex
     elif method == "GD":
@@ -38,7 +38,7 @@ def lyapunov_bisection_search(method, mu, L, nb_points, precision, rho=1):
 
         while gamma_max_lyap - gamma_min_lyap > precision:
             gamma = (gamma_min_lyap + gamma_max_lyap) / 2
-            lyap = lyapunov_search(beta=beta, gamma=gamma, mu=mu, L=L, rho=rho)
+            lyap = lyapunov_search(beta=beta, gamma=gamma, mu=mu, L=L, rho=rho, )
             if lyap != inf:
                 gamma_min_lyap = gamma
             else:
@@ -48,6 +48,38 @@ def lyapunov_bisection_search(method, mu, L, nb_points, precision, rho=1):
 
     logdir = "results/lyapunov"
     fn = "{}_mu{:.2f}_L{:.0f}.txt".format(method, mu, L)
+    write_result_file(logdir=logdir, filename=fn,
+                      gammas=gammas_lyap, betas=betas)
+
+
+def lyapunov_bisection_search_multistep(method, mu, L, nb_points, precision, rho=1, lyapunov_steps=1):
+    if method != "HB":
+        raise NotImplementedError
+    
+    betas = np.linspace(0, 1, nb_points + 1, endpoint=False)[1:]
+    gammas_min_lyap = np.zeros_like(betas)
+    gammas_max_lyap = [bound(method=method, L=L, beta=beta) for beta in betas]
+    lyapunov_search = lyapunov_heavy_ball_momentum_multistep
+    gammas_lyap = list()
+
+    for it in tqdm(range(len(betas))):
+
+        beta = betas[it]
+        gamma_min_lyap = gammas_min_lyap[it]
+        gamma_max_lyap = gammas_max_lyap[it]
+
+        while gamma_max_lyap - gamma_min_lyap > precision:
+            gamma = (gamma_min_lyap + gamma_max_lyap) / 2
+            lyap = lyapunov_search(beta=beta, gamma=gamma, mu=mu, L=L, rho=rho, lyapunov_steps=lyapunov_steps)
+            if lyap != inf:
+                gamma_min_lyap = gamma
+            else:
+                gamma_max_lyap = gamma
+
+        gammas_lyap.append(gamma_min_lyap)
+
+    logdir = "results/lyapunov"
+    fn = "{}_mu{:.2f}_L{:.0f}_steps_{:d}.txt".format(method, mu, L, lyapunov_steps)
     write_result_file(logdir=logdir, filename=fn,
                       gammas=gammas_lyap, betas=betas)
 
