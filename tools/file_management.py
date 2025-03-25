@@ -302,7 +302,7 @@ def get_colored_graphics(method, mu, L, max_cycle_length, add_background=True, a
         os.makedirs(figdir)
 
     figname = "{}_mu{:.2f}_L{:.0f}_colored.png".format(method, mu, L)
-    plt.savefig(figname, bbox_inches="tight")
+    plt.savefig(os.path.join(figdir, figname), bbox_inches="tight")
 
 
 if __name__ == "__main__":

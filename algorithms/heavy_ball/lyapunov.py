@@ -121,16 +121,24 @@ def lyapunov_heavy_ball_momentum_multistep(beta, gamma, mu, L, rho, lyapunov_ste
 
     matrix_combination, vector_combination, dual = interpolation_combination(list_of_points, mu, L, function_class="smooth strongly convex")
     constraints.append(- VP_plus << matrix_combination)
-    constraints.append(ftt - fs - Vp_plus <= vector_combination)
+    # constraints.append(ftt - fs - Vp_plus <= vector_combination)
+    constraints.append(- Vp_plus <= vector_combination)
+    constraints.append(cp.trace(P) >= 1)
     constraints.append(dual >= 0)
-    
-    # TODO: Use the trace constraint instead
 
     # 0 if there exists a Lyapunov
     # inf otherwise
     prob = cp.Problem(objective=cp.Minimize(0), constraints=constraints)
     try:
-        value = prob.solve(solver="MOSEK")
-    except cp.error.SolverError:
-        value = prob.solve(solver="SCS")
+        value = prob.solve(solver="MOSEK", verbose=True, 
+                           accept_unknown=False,
+                        #    mosek_params={
+                        #        "MSK_DPAR_INTPNT_QO_TOL_DFEAS" : 1e-10,
+                        #        "MSK_DPAR_INTPNT_CO_TOL_PFEAS" : 1e-10,
+                        #        "MSK_DPAR_BASIS_TOL_S" : 1e-8,
+                        #        }
+                           )
+    except cp.error.SolverError as e:
+        print(e)
+        value = prob.solve(solver="SCS", eps=1e-8)
     return value
