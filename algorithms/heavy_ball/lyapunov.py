@@ -74,18 +74,41 @@ def initialize_lyapunov_heavy_ball_momentum_multistep(K, T):
     return x_list, g_list, f_list, xs, gs, fs
 
 
-def lyapunov_heavy_ball_momentum_multistep(beta, gamma, mu, L, rho, lyapunov_steps=1):
+def get_nonnegativity_constraints(P, p, beta, gamma, mu, L):
+    K = 1
+    
+    # Initialize
+    x_list, g_list, f_list, xs, gs, fs = initialize_lyapunov_heavy_ball_momentum_multistep(K, T=1)
+    
+    Vp = p.T @ np.vstack(f_list)
+    
+    x = np.vstack(x_list)
+    g = np.vstack(g_list)
+    VP = np.vstack((x, g)).T @ P @ np.vstack((x, g))
+    
+    # Build constraints
+    list_of_points = list(zip(x_list, g_list, f_list))
+    list_of_points += [(xs, gs, fs)]
+    matrix_combination, vector_combination, dual = interpolation_combination(list_of_points, mu, L, function_class="smooth strongly convex")
+    
+    constraints = []
+    constraints += [ - VP << matrix_combination ]
+    # constraints += [ ftt - fs - Vp_plus <= vector_combination ] # no longer using this to break homogeneity
+    constraints += [ - Vp <= vector_combination ]
+    constraints += [ cp.trace(P) >= 1 ] # use this instead
+    constraints += [ dual >= 0 ]
+    
+    return constraints
 
-    # TODO: initialize two sets of bases for K=1 and K=2
+
+def get_monotonicity_constraints(P, p, beta, gamma, mu, L, rho, lyapunov_steps=1):
     K = 2
     
     # Initialize
-    x_list, g_list, f_list, xs, gs, fs = initialize_lyapunov_heavy_ball_momentum_multistep(K, lyapunov_steps)
+    x_list, g_list, f_list, xs, gs, fs = initialize_lyapunov_heavy_ball_momentum_multistep(K, T=lyapunov_steps)
     
     # Run algorithm
-    for t in range(lyapunov_steps + 1):
-        if t == 0:
-            continue
+    for t in range(1, lyapunov_steps + 1):
         xprev = x_list[t-1]
         xcurr = x_list[t]
         gcurr = g_list[t]
@@ -93,44 +116,46 @@ def lyapunov_heavy_ball_momentum_multistep(beta, gamma, mu, L, rho, lyapunov_ste
         xnext = xcurr - gamma * gcurr + beta * (xcurr - xprev)
         x_list += [xnext]
 
-    # Lyapunov
+
+    Vp = p.T @ np.vstack(f_list[:2])
+    Vp_plus = p.T @ np.vstack(f_list[-2:])
+    
+    x = np.vstack(x_list[:2])
+    g = np.vstack(g_list[:2])
+    VP = np.vstack((x, g)).T @ P @ np.vstack((x, g))
+    
+    x = np.vstack(x_list[-2:])
+    g = np.vstack(g_list[-2:])
+    VP_plus = np.vstack((x, g)).T @ P @ np.vstack((x, g))
+
+    # Build constraints
+    list_of_points = list(zip(x_list, g_list, f_list))
+    list_of_points += [(xs, gs, fs)]
+    matrix_combination, vector_combination, dual = interpolation_combination(list_of_points, mu, L, function_class="smooth strongly convex")
+    
+    constraints = []
+    constraints += [ VP_plus - rho * VP << matrix_combination ]
+    constraints += [ Vp_plus - rho * Vp <= vector_combination ]
+    constraints += [ dual >= 0 ]
+        
+    return constraints
+
+
+def lyapunov_heavy_ball_momentum_multistep(beta, gamma, mu, L, rho, lyapunov_steps=1):
+    # Define SDP variables
     P = cp.Variable((4, 4), symmetric=True)
     p = cp.Variable((2,))
-    constraints = []
     
-    x0 = x_list[0]; x1 = x_list[1]
-    g0 = g_list[0]; g1 = g_list[1]
-    f0 = f_list[0]; f1 = f_list[1]
-    xt = x_list[-2]; xtt = x_list[-1]
-    gt = g_list[-2]; gtt = g_list[-1]
-    ft = f_list[-2]; ftt = f_list[-1]
-    
-
-    VP = np.array([x0 - xs, g0, x1 - xs, g1]).T @ P @ np.array([x0 - xs, g0, x1 - xs, g1])
-    VP_plus = np.array([xt - xs, gt, xtt - xs, gtt]).T @ P @ np.array([xt - xs, gt, xtt - xs, gtt])
-    Vp = np.array([f0 - fs, f1 - fs]).T @ p
-    Vp_plus = np.array([ft - fs, ftt - fs]).T @ p
-
-    # Write problem
-    list_of_points = list(zip(x_list, g_list, f_list))
-
-    matrix_combination, vector_combination, dual = interpolation_combination(list_of_points, mu, L, function_class="smooth strongly convex")
-    constraints.append(VP_plus - rho * VP << matrix_combination)
-    constraints.append(Vp_plus - rho * Vp <= vector_combination)
-    constraints.append(dual >= 0)
-
-    matrix_combination, vector_combination, dual = interpolation_combination(list_of_points, mu, L, function_class="smooth strongly convex")
-    constraints.append(- VP_plus << matrix_combination)
-    # constraints.append(ftt - fs - Vp_plus <= vector_combination)
-    constraints.append(- Vp_plus <= vector_combination)
-    constraints.append(cp.trace(P) >= 1)
-    constraints.append(dual >= 0)
+    # Get constraints
+    constraints = get_nonnegativity_constraints(P, p, beta=beta, gamma=gamma, mu=mu, L=L)
+    constraints += get_monotonicity_constraints(P, p, beta=beta, gamma=gamma, mu=mu, L=L, rho=rho, lyapunov_steps=lyapunov_steps)
 
     # 0 if there exists a Lyapunov
     # inf otherwise
     prob = cp.Problem(objective=cp.Minimize(0), constraints=constraints)
     try:
-        value = prob.solve(solver="MOSEK", verbose=True, 
+        value = prob.solve(solver="MOSEK", 
+                           verbose=False, 
                            accept_unknown=False,
                         #    mosek_params={
                         #        "MSK_DPAR_INTPNT_QO_TOL_DFEAS" : 1e-10,
@@ -140,5 +165,7 @@ def lyapunov_heavy_ball_momentum_multistep(beta, gamma, mu, L, rho, lyapunov_ste
                            )
     except cp.error.SolverError as e:
         print(e)
-        value = prob.solve(solver="SCS", eps=1e-8)
+        print("try solving with SCS...")
+        value = prob.solve(solver="SCS", eps=1e-6, verbose=True)
+
     return value

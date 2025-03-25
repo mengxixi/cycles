@@ -85,4 +85,4 @@ def run_HB_multistep_lyapunov(list_mus, nb_points, precision, max_lyapunov_steps
 if __name__ == "__main__":
 
     # run_all(list_algos=["HB"], list_mus=[0.1], nb_points=300, precision=10**-4, max_cycle_length=25)
-    run_HB_multistep_lyapunov(list_mus=[0.1], nb_points=300, precision=10**-4, max_lyapunov_steps=1)
+    run_HB_multistep_lyapunov(list_mus=[0.1], nb_points=300, precision=10**-4, max_lyapunov_steps=8)
