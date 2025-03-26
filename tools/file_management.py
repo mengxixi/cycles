@@ -109,8 +109,9 @@ def get_colored_graphics_HB_multistep_lyapunov(mu, L, max_lyapunov_steps, folder
         y_green = list()
         for gamma_intervals, beta in zip(gamma_intervals_lyap, betas_lyap):
             for gamma_min, gamma_max in gamma_intervals:
-                x_green += list(np.linspace(gamma_min, gamma_max, 500))
-                y_green += [beta] * 500
+                if gamma_max - gamma_min > .01:
+                    x_green += list(np.linspace(gamma_min, gamma_max, 500))
+                    y_green += [beta] * 500
                 
         # add lyapunov
         ax_union.plot(x_green, y_green, '.', color="yellowgreen", label="convergence")
