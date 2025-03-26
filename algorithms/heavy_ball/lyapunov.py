@@ -74,7 +74,7 @@ def initialize_lyapunov_heavy_ball_momentum_multistep(K, T):
     return x_list, g_list, f_list, xs, gs, fs
 
 
-def get_nonnegativity_constraints(P, p, beta, gamma, mu, L):
+def get_nonnegativity_constraints(P, p, mu, L):
     K = 1
     
     # Initialize
@@ -141,13 +141,13 @@ def get_monotonicity_constraints(P, p, beta, gamma, mu, L, rho, lyapunov_steps=1
     return constraints
 
 
-def lyapunov_heavy_ball_momentum_multistep(beta, gamma, mu, L, rho, lyapunov_steps=1):
+def lyapunov_heavy_ball_momentum_multistep(beta, gamma, mu, L, rho, lyapunov_steps=1, return_all=False):
     # Define SDP variables
-    P = cp.Variable((4, 4), symmetric=True)
+    P = cp.Variable((4, 4), PSD=True)
     p = cp.Variable((2,))
     
     # Get constraints
-    constraints = get_nonnegativity_constraints(P, p, beta=beta, gamma=gamma, mu=mu, L=L)
+    constraints = get_nonnegativity_constraints(P, p, mu=mu, L=L)
     constraints += get_monotonicity_constraints(P, p, beta=beta, gamma=gamma, mu=mu, L=L, rho=rho, lyapunov_steps=lyapunov_steps)
 
     # 0 if there exists a Lyapunov
@@ -168,4 +168,7 @@ def lyapunov_heavy_ball_momentum_multistep(beta, gamma, mu, L, rho, lyapunov_ste
         print("try solving with SCS...")
         value = prob.solve(solver="SCS", eps=1e-6, verbose=True)
 
-    return value
+    if return_all:
+        return prob, P, p
+    else:
+        return value
