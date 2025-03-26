@@ -5,6 +5,7 @@ from matplotlib import cm
 import matplotlib as mpl
 import matplotlib.lines as mlines
 from mpl_toolkits.axes_grid1.inset_locator import zoomed_inset_axes, mark_inset
+import tools.cycle_utils as cu
 
 size = 19
 mpl.rcParams.update({
@@ -38,6 +39,28 @@ def read_result_file(file_path):
     return gammas, betas
 
 
+def read_result_file_multistep(file_path):
+    with open(file_path) as f:
+        lines = f.readlines()[1:]
+
+    all_gamma_intervals = list()
+    betas = list()
+
+    for line in lines:
+        gamma_intervals_str, beta_str = line.split("\t")[:2]
+        betas.append(float(beta_str))
+        
+        gamma_intervals_str = gamma_intervals_str.split(";")
+        gamma_intervals = []
+        for gamma_interval in gamma_intervals_str:
+            I = gamma_interval.strip('()').split(', ')
+            gamma_intervals += [ (float(I[0]), float(I[1])) ]
+            
+        all_gamma_intervals.append(gamma_intervals)
+
+    return all_gamma_intervals, betas
+
+
 def write_result_file(logdir, filename, gammas, betas):
     if not os.path.isdir(logdir):
         os.makedirs(logdir)
@@ -49,87 +72,17 @@ def write_result_file(logdir, filename, gammas, betas):
             f.write("{}\t{}\n".format(gamma, beta))
 
 
-def bound(method, L, beta):
-    if method == "HB":
-        return 2 * (1 + beta) / L
-    elif method == "NAG":
-        return (1 + 1 / (1 + 2 * beta)) / L
-    elif method == "GD":
-        return 2 / L
-    elif method == "TOS":
-        return 2 / L
-    else:
-        raise Exception
+def write_result_file_multistep(logdir, filename, gamma_intervals, betas):
+    if not os.path.isdir(logdir):
+        os.makedirs(logdir)
 
-
-def is_valid(gamma, beta, L):
-    return gamma*L < 2 * (1+beta) and gamma*L >= 0 and gamma*L <=4
-
-
-def valid_for_another_K(beta, gamma, K, mu, kappa):
-    # return False
-
-    theta = 2*np.pi/K
-    cos = np.cos(theta)
-    
-    a = mu**2
-    b = - 2*mu * (beta - cos + kappa * (1-beta*cos))
-    c = 2*kappa*(1-cos)*(1+beta**2-2*beta*cos)
-    
-    return a * gamma**2 + b * gamma + c <= 0
-
-
-def get_cycle_tunings(mu, L, betas):
-    kappa = mu/L
-    omega = 1 # change to 2 to get multiples of fractions
-    K_max = omega*10
-    start = 3
-    K_range = [i/omega for i in range(omega*start, K_max)]
-    valid_tunings = {}
-    
-    for i, K in enumerate(K_range):
-
-        valid_betas = []
-        valid_Lgammas = []
-
-        theta = 2*np.pi/K
-        cos = np.cos(theta)
-        
-        for beta in betas:
-            a = mu**2
-            b = - 2*mu * (beta - cos + kappa * (1-beta*cos))
-            c = 2*kappa*(1-cos)*(1+beta**2-2*beta*cos)
+    file_path = os.path.join(logdir, filename)
+    with open(file_path, "w") as f:
+        f.write("gamma_intervals\tbeta\n")
+        for gamma_intervals, beta in zip(gamma_intervals, betas):
+            gamma_intervals_str = [str(I) for I in gamma_intervals]
             
-            if b**2 < 4*a*c:
-                continue
-            
-            gamma1 = (-b + np.sqrt(b**2 - 4*a*c)) / (2*a)
-            gamma2 = (-b - np.sqrt(b**2 - 4*a*c)) / (2*a)
-            
-            v1 = is_valid(gamma1, beta, L)
-            v2 = is_valid(gamma2, beta, L)
-            
-            if v1:
-                included = False
-                for k in K_range[:i]:
-                    included = included or valid_for_another_K(beta, gamma1, k, mu, kappa)
-                
-                if not included:
-                    valid_betas.append(beta)
-                    valid_Lgammas.append(gamma1*L)
-            
-            if v2:
-                included = False
-                for k in K_range[:i]:
-                    included = included or valid_for_another_K(beta, gamma2, k, mu, kappa)
-                
-                if not included:
-                    valid_betas.append(beta)
-                    valid_Lgammas.append(gamma2*L)
-
-        valid_tunings[str(K)] = (K, valid_betas, valid_Lgammas)
-        
-    return valid_tunings
+            f.write("{}\t{}\n".format(";".join(gamma_intervals_str), beta))
 
 
 def get_colored_graphics_HB_multistep_lyapunov(mu, L, max_lyapunov_steps, folder="results/"):
@@ -150,13 +103,13 @@ def get_colored_graphics_HB_multistep_lyapunov(mu, L, max_lyapunov_steps, folder
     for T in range(1, max_lyapunov_steps + 1):
         fn = "{}_mu{:.2f}_L{:.0f}_steps_{:d}.txt".format(method, mu, L, T)
         result_path = os.path.join(folder, "lyapunov", fn)
-        gammas_lyap, betas_lyap = read_result_file(file_path=result_path)
+        gamma_intervals_lyap, betas_lyap = read_result_file_multistep(file_path=result_path)
         
         x_green = list()
         y_green = list()
-        for gamma_max, beta in zip(gammas_lyap, betas_lyap):
-            if gamma_max > .01:
-                x_green += list(np.linspace(0, gamma_max, 500))
+        for gamma_intervals, beta in zip(gamma_intervals_lyap, betas_lyap):
+            for gamma_min, gamma_max in gamma_intervals:
+                x_green += list(np.linspace(gamma_min, gamma_max, 500))
                 y_green += [beta] * 500
                 
         # add lyapunov
@@ -170,7 +123,7 @@ def get_colored_graphics_HB_multistep_lyapunov(mu, L, max_lyapunov_steps, folder
         ax_T.plot(x_green, y_green, '.', color="yellowgreen", label="convergence")
         
     # ========== plot cycles manually for all axes, separate and union ==========
-    valid_tunings = get_cycle_tunings(mu, L, betas)
+    valid_tunings = cu.get_cycle_tunings(mu, L, betas)
     for axq in axs + [ax_union]:
         for _, (K, valid_betas, valid_Lgammas) in valid_tunings.items():
             color = "red" if K.is_integer() else "orange"
@@ -217,7 +170,7 @@ def get_colored_graphics(method, mu, L, max_cycle_length, add_background=True, a
     else:
         betas = np.linspace(0, 1, 300 + 1, endpoint=False)[1:]
     for beta in betas:
-        x_grey += list(np.linspace(0, bound(method=method, L=L, beta=beta), 500))
+        x_grey += list(np.linspace(0, cu.bound(method=method, L=L, beta=beta), 500))
         y_grey += [beta] * 500
     if add_background:
         ax.plot(x_grey, y_grey, '.', color="gainsboro", label="no conclusion")
@@ -255,8 +208,8 @@ def get_colored_graphics(method, mu, L, max_cycle_length, add_background=True, a
             x_red = list()
             y_red = list()
             for gamma_min, beta in zip(gammas_cycle, betas_cycle):
-                if gamma_min <= bound(method, L, beta):
-                    x_red += list(np.linspace(gamma_min, bound(method, L, beta), 500))
+                if gamma_min <= cu.bound(method, L, beta):
+                    x_red += list(np.linspace(gamma_min, cu.bound(method, L, beta), 500))
                     y_red += [beta] * 500
             color_scale = (max_cycle_length + 1 - K) / (max_cycle_length - 1)
             color = color_map(color_scale)
