@@ -75,7 +75,7 @@ def lyapunov_bisection_search_multistep(method, mu, L, nb_points, precision, rho
         
         # generate a list of gamma intervals, each to be bisect on    
         intervals = get_HB_gamma_bisection_intervals_for_beta(mu=mu, L=L, beta=beta, lyapunov_steps=lyapunov_steps)
-        
+
         valid_gamma_intervals = []
         for (gamma_min, gamma_max) in intervals:
             gamma_min_lyap = gamma_min
@@ -89,8 +89,8 @@ def lyapunov_bisection_search_multistep(method, mu, L, nb_points, precision, rho
                 else:
                     gamma_max_lyap = gamma
                     
-                valid_gamma_intervals += [ (gamma_min, gamma_min_lyap) ]
-                
+            valid_gamma_intervals += [ (gamma_min, gamma_min_lyap) ]
+
         all_valid_gamma_intervals.append(valid_gamma_intervals)
         
     # write results to file
