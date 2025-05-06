@@ -1,3 +1,5 @@
+import warnings
+from math import inf
 import numpy as np
 import cvxpy as cp
 
@@ -98,7 +100,7 @@ def get_nonnegativity_constraints(P, p, mu, L):
     constraints += [ cp.trace(P) >= 1 ] # use this instead
     constraints += [ dual >= 0 ]
     
-    return constraints
+    return constraints, dual
 
 
 def get_monotonicity_constraints(P, p, beta, gamma, mu, L, rho, lyapunov_steps=1):
@@ -137,19 +139,40 @@ def get_monotonicity_constraints(P, p, beta, gamma, mu, L, rho, lyapunov_steps=1
     constraints += [ VP_plus - rho * VP << matrix_combination ]
     constraints += [ Vp_plus - rho * Vp <= vector_combination ]
     constraints += [ dual >= 0 ]
-        
-    return constraints
+
+    return constraints, dual
 
 
 def lyapunov_heavy_ball_momentum_multistep(beta, gamma, mu, L, rho, lyapunov_steps=1, return_all=False):
     # Define SDP variables
-    P = cp.Variable((4, 4), PSD=True)
+    P = cp.Variable((4, 4), symmetric=True)
     p = cp.Variable((2,))
     
     # Get constraints
-    constraints = get_nonnegativity_constraints(P, p, mu=mu, L=L)
-    constraints += get_monotonicity_constraints(P, p, beta=beta, gamma=gamma, mu=mu, L=L, rho=rho, lyapunov_steps=lyapunov_steps)
-
+    constraints_n, dual_n = get_nonnegativity_constraints(P, p, mu=mu, L=L)
+    constraints_m, dual_m = get_monotonicity_constraints(P, p, beta=beta, gamma=gamma, mu=mu, L=L, rho=rho, lyapunov_steps=lyapunov_steps)
+    constraints = constraints_n + constraints_m
+        
+    # add more constraints to reduce the complexity of the Lyapuov function
+    constraints += [ P[2,:] == 0 ]
+    constraints += [ P[:,2] == 0 ]
+    constraints += [ p[0] == 0]
+    
+    # constraints += [ P[0,:] == 0 ]
+    # constraints += [ P[:,0] == 0 ]
+    
+    # constraints += [ P[0,2] == 0 ] # x_{k-1}, g_{k-1}
+    # constraints += [ P[2,0] == 0 ]
+    
+    # constraints += [ P[1,2] == 0 ] # x_k, g_{k-1}
+    # constraints += [ P[2,1] == 0 ]
+    
+    # constraints += [ P[1,3] == 0 ] # x_k, g_k
+    # constraints += [ P[3,1] == 0 ]
+    
+    # constraints += [ P[0,3] == 0 ] # x_{k-1}, g_k
+    # constraints += [ P[3,0] == 0 ]
+        
     # 0 if there exists a Lyapunov
     # inf otherwise
     prob = cp.Problem(objective=cp.Minimize(0), constraints=constraints)
@@ -157,18 +180,26 @@ def lyapunov_heavy_ball_momentum_multistep(beta, gamma, mu, L, rho, lyapunov_ste
         value = prob.solve(solver="MOSEK", 
                            verbose=False, 
                            accept_unknown=False,
-                        #    mosek_params={
-                        #        "MSK_DPAR_INTPNT_QO_TOL_DFEAS" : 1e-10,
-                        #        "MSK_DPAR_INTPNT_CO_TOL_PFEAS" : 1e-10,
-                        #        "MSK_DPAR_BASIS_TOL_S" : 1e-8,
-                        #        }
+                        #    mosek_params={}
                            )
+
     except cp.error.SolverError as e:
         print(e)
-        print("try solving with SCS...")
-        value = prob.solve(solver="SCS", eps=1e-6, verbose=True)
+        print("Marking problem as infeasible...")
+        # print("try solving with SCS...")
+        # value = prob.solve(solver="SCS")
+        
+        # if value > 1e-3:
+        #     warnings.warn("SCS returning suboptimal result, discarding...")
+        #     value = inf
+        #     P.value = None
+        #     p.value = None
+        #     dual_m.value = None
+        #     dual_n.value = None
+            
+        value = inf 
 
     if return_all:
-        return prob, P, p
+        return prob, P, p, dual_n, dual_m
     else:
         return value

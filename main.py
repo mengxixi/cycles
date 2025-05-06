@@ -1,5 +1,7 @@
 from joblib import Parallel, delayed
 
+import numpy as np
+
 from lyapunov_bisection_search import lyapunov_bisection_search, lyapunov_bisection_search_multistep
 from cycle_bisection_search import cycle_bisection_search
 from tools.file_management import get_colored_graphics, get_colored_graphics_HB_multistep_lyapunov
@@ -65,14 +67,14 @@ def run_HB_multistep_lyapunov(list_mus, nb_points, precision, max_lyapunov_steps
                 mus.append(mu)
                 lyapunov_steps.append(step)
 
-    Parallel(n_jobs=-1)(delayed(lyapunov_bisection_search_multistep)(method=methods[i],
-                                                                        mu=mus[i],
-                                                                        L=1,
-                                                                        nb_points=nb_points,
-                                                                        precision=precision,
-                                                                        rho=1,
-                                                                        lyapunov_steps=lyapunov_steps[i],
-                                                                     ) for i in range(len(methods)))
+    # Parallel(n_jobs=-1)(delayed(lyapunov_bisection_search_multistep)(method=methods[i],
+    #                                                                     mu=mus[i],
+    #                                                                     L=1,
+    #                                                                     nb_points=nb_points,
+    #                                                                     precision=precision,
+    #                                                                     rho=1,
+    #                                                                     lyapunov_steps=lyapunov_steps[i],
+    #                                                                  ) for i in range(len(methods)))
 
     for method in list_algos:
         for mu in list_mus:
@@ -85,4 +87,8 @@ def run_HB_multistep_lyapunov(list_mus, nb_points, precision, max_lyapunov_steps
 if __name__ == "__main__":
 
     # run_all(list_algos=["HB"], list_mus=[0.1], nb_points=300, precision=10**-4, max_cycle_length=25)
-    run_HB_multistep_lyapunov(list_mus=[0.1], nb_points=300, precision=10**-4, max_lyapunov_steps=10)
+    
+    nb_points = 300
+    # list_mus = np.linspace(0.1, 0.9, 9, endpoint=True)
+    list_mus = [0.1, 0.3, 0.7, 0.9]
+    run_HB_multistep_lyapunov(list_mus=list_mus, nb_points=nb_points, precision=10**-4, max_lyapunov_steps=1)

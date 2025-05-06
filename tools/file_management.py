@@ -1,11 +1,18 @@
 import os
 import numpy as np
+# to avoid str(scalar) returning "np.float64(0.5)" rather than "0.5"
+np.set_printoptions(legacy="1.25")
+from scipy.optimize import root_scalar
+
 import matplotlib.pyplot as plt
 from matplotlib import cm
 import matplotlib as mpl
 import matplotlib.lines as mlines
 from mpl_toolkits.axes_grid1.inset_locator import zoomed_inset_axes, mark_inset
 import tools.cycle_utils as cu
+
+import pysr
+from pysr import PySRRegressor
 
 size = 19
 mpl.rcParams.update({
@@ -116,9 +123,43 @@ def get_colored_graphics_HB_multistep_lyapunov(mu, L, max_lyapunov_steps, folder
         # add lyapunov
         ax_union.plot(x_green, y_green, '.', color="yellowgreen", label="convergence")
         
-        # now do a separate one where it's not 
+        # now do a separate one where it's not unionized
         fig_T, ax_T = plt.subplots(nrows=1, ncols=1, figsize=(15, 9), 
                                    constrained_layout=True)
+        
+        # ======== also fit a curve to the boundary ========
+        # if T == 1:
+        #     b_gammas = []
+        #     b_betas = []
+        #     for gamma_intervals, beta in zip(gamma_intervals_lyap, betas_lyap):
+        #         # just take the first entry T=1
+        #         gamma_max = gamma_intervals[0][1]
+        #         bound = cu.bound("HB", L, beta)
+        #         if np.abs(gamma_max - bound) < 1e-2:
+        #             # toss out the values that are capped at the boundary
+        #             continue
+        #         b_gammas.append(gamma_max)
+        #         b_betas.append(beta)
+            
+        #     # print("mu", mu)
+        #     # # print(np.min(b_betas))
+        #     # coeffs = np.polyfit(b_betas[:100], b_gammas[:100], deg=2)
+        #     # print(coeffs)
+        #     # poly = np.poly1d(coeffs)
+
+        #     def model(zz):
+        #         return (zz - 1.0044357314273449)*(-np.exp(3.069555330084005*zz)-1.2140179016574235)
+
+        #     yy = np.linspace(np.min(b_betas), 1, 500)
+        #     xx = model(yy)
+        #     # ind = np.argmin( np.abs(2*(1+yy) - xx) )
+        #     # beta_cross = yy[ind]
+        #     # print(beta_cross)
+        #     # gamma_cross = xx[ind]
+        #     # ax_T.scatter(gamma_cross, beta_cross, s=50, color="darkgreen", zorder=100)
+        #     ax_T.plot(xx, yy, linewidth=2, color="darkgreen", zorder=100)
+        # =======================================================
+        
         axs += [ax_T]
         figs += [fig_T]
         ax_T.plot(x_green, y_green, '.', color="yellowgreen", label="convergence")
@@ -139,6 +180,46 @@ def get_colored_graphics_HB_multistep_lyapunov(mu, L, max_lyapunov_steps, folder
         axq.axhline(1.0, color="black")
         axq.set_xlabel(r"$\gamma$")
         axq.set_ylabel(r"$\beta$", rotation=0, labelpad=10)
+        
+        # plot the union of all cycle boundaries including fractional K
+        # theoretically computed
+        kappa = mu/L
+        
+        omega = 8
+        K_max = omega*10
+        start = 2
+        K_range = [i/omega for i in range(omega*start, K_max+1)]
+        
+        Phis = np.cos( 2*np.pi /  np.array(K_range) )
+        Gammas = np.zeros_like(Phis)
+        Betas = np.zeros_like(Phis)
+
+        for i, phi in enumerate(Phis):
+            def gamma(beta):
+                return kappa*(beta**2 - 2*(2*phi-1)*beta + 1) / (kappa*beta + 1)
+            
+            def func(beta):
+                # now this is the function we want to solve the roots for
+                q4 = (2*kappa**2 - kappa)*beta**4
+                q3 = (-4*kappa**2*phi**2 - 2*kappa**2 + 4*kappa - 2)*beta**3
+                q2 = (8*phi*kappa**2 - 2*kappa**2 + 8*kappa*phi**2 - 16*kappa*phi + 2*kappa + 8*phi - 2)*beta**2
+                q1 = (-4*phi**2 - 2*kappa**2 + 4*kappa - 2)*beta
+                q0 = -kappa + 2
+                
+                return q4 + q3 + q2 + q1 + q0
+            
+            sol = root_scalar(func, bracket=[0,1], method="brentq")
+            beta = sol.root
+            Betas[i] = beta
+            Gammas[i] = gamma(beta)
+            
+        axq.scatter(Gammas/mu, Betas, s=10, color="black", zorder=100)
+        
+        # also plot Ghadimi's region
+        Betas = np.linspace(0, 1, 300 + 1, endpoint=False)[1:]
+        Gammas = 2*(1-Betas**2) / (L - mu*Betas)
+        axq.scatter(Gammas, Betas, s=10, color="darkgreen", zorder=100)
+
     # ========================================
     
     figfn = "{}_mu{:.2f}_L{:.0f}_steps{}_union_colored.png".format(method, mu, L, max_lyapunov_steps)
