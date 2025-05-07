@@ -67,14 +67,14 @@ def run_HB_multistep_lyapunov(list_mus, nb_points, precision, max_lyapunov_steps
                 mus.append(mu)
                 lyapunov_steps.append(step)
 
-    # Parallel(n_jobs=-1)(delayed(lyapunov_bisection_search_multistep)(method=methods[i],
-    #                                                                     mu=mus[i],
-    #                                                                     L=1,
-    #                                                                     nb_points=nb_points,
-    #                                                                     precision=precision,
-    #                                                                     rho=1,
-    #                                                                     lyapunov_steps=lyapunov_steps[i],
-    #                                                                  ) for i in range(len(methods)))
+    Parallel(n_jobs=-1)(delayed(lyapunov_bisection_search_multistep)(method=methods[i],
+                                                                        mu=mus[i],
+                                                                        L=1,
+                                                                        nb_points=nb_points,
+                                                                        precision=precision,
+                                                                        rho=1,
+                                                                        lyapunov_steps=lyapunov_steps[i],
+                                                                     ) for i in range(len(methods)))
 
     for method in list_algos:
         for mu in list_mus:

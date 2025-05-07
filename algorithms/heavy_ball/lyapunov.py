@@ -152,15 +152,19 @@ def lyapunov_heavy_ball_momentum_multistep(beta, gamma, mu, L, rho, lyapunov_ste
     constraints_n, dual_n = get_nonnegativity_constraints(P, p, mu=mu, L=L)
     constraints_m, dual_m = get_monotonicity_constraints(P, p, beta=beta, gamma=gamma, mu=mu, L=L, rho=rho, lyapunov_steps=lyapunov_steps)
     constraints = constraints_n + constraints_m
-        
-    # add more constraints to reduce the complexity of the Lyapuov function
+    
+    # additional constraints correspond to Ghadimi's Lyapunov function
     constraints += [ P[2,:] == 0 ]
     constraints += [ P[:,2] == 0 ]
-    constraints += [ p[0] == 0]
+    constraints += [ P[3,:] == 0 ]
+    constraints += [ P[:,3] == 0 ]
     
-    # constraints += [ P[0,:] == 0 ]
-    # constraints += [ P[:,0] == 0 ]
+    # # constraints that give us the smooth boundary
+    # constraints += [ P[2,:] == 0 ]
+    # constraints += [ P[:,2] == 0 ]
+    # constraints += [ p[0] == 0]
     
+    # # constraints that preserve the largest green region    
     # constraints += [ P[0,2] == 0 ] # x_{k-1}, g_{k-1}
     # constraints += [ P[2,0] == 0 ]
     
