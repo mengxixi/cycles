@@ -91,4 +91,4 @@ if __name__ == "__main__":
     nb_points = 300
     # list_mus = np.linspace(0.1, 0.9, 9, endpoint=True)
     list_mus = [0.1, 0.3, 0.7, 0.9]
-    run_HB_multistep_lyapunov(list_mus=list_mus, nb_points=nb_points, precision=10**-4, max_lyapunov_steps=1)
+    run_HB_multistep_lyapunov(list_mus=list_mus, nb_points=nb_points, precision=10**-4, max_lyapunov_steps=5)

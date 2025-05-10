@@ -217,7 +217,7 @@ def get_colored_graphics_HB_multistep_lyapunov(mu, L, max_lyapunov_steps, folder
         
         # also plot Ghadimi's region
         Betas = np.linspace(0, 1, 300 + 1, endpoint=False)[1:]
-        Gammas = 2*(1-Betas**2) / (L - mu*Betas)
+        Gammas = np.minimum(2*(1-Betas**2) / (L - mu*Betas), 2/L)
         axq.scatter(Gammas, Betas, s=10, color="darkgreen", zorder=100)
 
     # ========================================

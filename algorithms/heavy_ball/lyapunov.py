@@ -95,9 +95,9 @@ def get_nonnegativity_constraints(P, p, mu, L):
     
     constraints = []
     constraints += [ - VP << matrix_combination ]
-    # constraints += [ ftt - fs - Vp_plus <= vector_combination ] # no longer using this to break homogeneity
+    constraints += [ f_list[1] - fs - Vp <= vector_combination ] # break homogeneity
     constraints += [ - Vp <= vector_combination ]
-    constraints += [ cp.trace(P) >= 1 ] # use this instead
+    # constraints += [ cp.trace(P) >= 1] # break homogeneity
     constraints += [ dual >= 0 ]
     
     return constraints, dual
@@ -142,6 +142,52 @@ def get_monotonicity_constraints(P, p, beta, gamma, mu, L, rho, lyapunov_steps=1
 
     return constraints, dual
 
+
+def lyapunov_heavy_ball_momentum_multistep_fixed(beta, gamma, mu, L, rho, lyapunov_steps=1, return_all=False):   
+    c = beta**2 / gamma - mu*beta/2
+    b = (2 - gamma*L) / (2*gamma)
+    # a2 = beta
+    a1 = 1-beta
+    
+    if np.isclose(b, 0):
+        b = 1e-6
+        
+    p1 = np.maximum(beta, c/b-a1)
+
+    p = np.array([p1, 1])
+    P = np.array([
+        [b, -b, 0, 0],
+        [-b, b, 0, 0],
+        [0, 0, 0, 0],
+        [0, 0, 0, 0]
+    ])
+                
+    # Get constraints
+    constraints_n, dual_n = get_nonnegativity_constraints(P, p, mu=mu, L=L)
+    constraints_m, dual_m = get_monotonicity_constraints(P, p, beta=beta, gamma=gamma, mu=mu, L=L, rho=rho, lyapunov_steps=lyapunov_steps)
+    constraints = constraints_n + constraints_m
+    
+    # 0 if there exists dual variables such that this P and p combination 
+    # is feasible and thus a valid lyapunov function for this gamma, beta combo
+    # inf otherwise
+    prob = cp.Problem(objective=cp.Minimize(0), constraints=constraints)
+    try:
+        value = prob.solve(solver="MOSEK", 
+                           verbose=False, 
+                           accept_unknown=False,
+                        #    mosek_params={}
+                           )
+
+    except cp.error.SolverError as e:
+        print(e)
+        print("Marking problem as infeasible...")
+        value = inf
+        
+    if return_all:
+        return value, prob, P, p, dual_n, dual_m
+    else:
+        return value
+    
 
 def lyapunov_heavy_ball_momentum_multistep(beta, gamma, mu, L, rho, lyapunov_steps=1, return_all=False):
     # Define SDP variables
@@ -204,6 +250,6 @@ def lyapunov_heavy_ball_momentum_multistep(beta, gamma, mu, L, rho, lyapunov_ste
         value = inf 
 
     if return_all:
-        return prob, P, p, dual_n, dual_m
+        return value, prob, P, p, dual_n, dual_m
     else:
         return value
