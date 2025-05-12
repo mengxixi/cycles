@@ -199,17 +199,21 @@ def lyapunov_heavy_ball_momentum_multistep(beta, gamma, mu, L, rho, lyapunov_ste
     constraints_m, dual_m = get_monotonicity_constraints(P, p, beta=beta, gamma=gamma, mu=mu, L=L, rho=rho, lyapunov_steps=lyapunov_steps)
     constraints = constraints_n + constraints_m
     
-    # additional constraints correspond to Ghadimi's Lyapunov function
-    constraints += [ P[2,:] == 0 ]
-    constraints += [ P[:,2] == 0 ]
-    constraints += [ P[3,:] == 0 ]
-    constraints += [ P[:,3] == 0 ]
-    
-    # # constraints that give us the smooth boundary
+    # # constraints correspond to Ghadimi's Lyapunov function
     # constraints += [ P[2,:] == 0 ]
     # constraints += [ P[:,2] == 0 ]
-    # constraints += [ p[0] == 0]
+    # constraints += [ P[3,:] == 0 ]
+    # constraints += [ P[:,3] == 0 ]
     
+    # constraints that give us the smooth boundary
+    constraints += [ P[2,:] == 0 ] # g_{k-1}
+    constraints += [ P[:,2] == 0 ]
+    constraints += [ p[0] == 0]
+
+    constraints += [ P[0,0] == P[1,1] ]
+    constraints += [ P[0,0] == -P[0,1] ]
+    constraints += [ P[0,3] == -P[1,3] ]
+            
     # # constraints that preserve the largest green region    
     # constraints += [ P[0,2] == 0 ] # x_{k-1}, g_{k-1}
     # constraints += [ P[2,0] == 0 ]
@@ -228,14 +232,15 @@ def lyapunov_heavy_ball_momentum_multistep(beta, gamma, mu, L, rho, lyapunov_ste
     prob = cp.Problem(objective=cp.Minimize(0), constraints=constraints)
     try:
         value = prob.solve(solver="MOSEK", 
-                           verbose=False, 
-                           accept_unknown=False,
-                        #    mosek_params={}
+                        #    verbose=True, 
+                        #    accept_unknown=False,
+                        # #    mosek_params={}
                            )
 
     except cp.error.SolverError as e:
         print(e)
         print("Marking problem as infeasible...")
+        value = inf 
         # print("try solving with SCS...")
         # value = prob.solve(solver="SCS")
         
@@ -246,8 +251,7 @@ def lyapunov_heavy_ball_momentum_multistep(beta, gamma, mu, L, rho, lyapunov_ste
         #     p.value = None
         #     dual_m.value = None
         #     dual_n.value = None
-            
-        value = inf 
+
 
     if return_all:
         return value, prob, P, p, dual_n, dual_m
