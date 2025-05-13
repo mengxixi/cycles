@@ -74,8 +74,8 @@ if __name__ == "__main__":
         d_list = res["d"]
         
     else:
-        mu_list = np.linspace(0, 1, n_pts+1, endpoint=False)[1:]
-        K_list = np.linspace(2, 10, n_pts)
+        mu_list = np.linspace(0, 1, n_pts+2, endpoint=False)[1:-1]
+        K_list = np.linspace(2, 10, n_pts+1, endpoint=False)[1:]
         mus, Ks = np.meshgrid(mu_list, K_list)
         
         mus = mus.flatten()

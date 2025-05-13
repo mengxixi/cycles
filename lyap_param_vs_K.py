@@ -18,7 +18,8 @@ plt.rcParams.update({
 TMP_DIR = "tmp"
 
 
-def get_gamma_beta_pair(kappa, K):
+def get_gamma_beta_pair(mu, L, K):
+    kappa = mu/L
     phi = np.cos( 2*np.pi /  K )
     
     def gamma(beta):
@@ -37,7 +38,7 @@ def get_gamma_beta_pair(kappa, K):
     sol = root_scalar(func, bracket=[0,1], method="brentq")
     beta = sol.root
 
-    return gamma(beta), beta
+    return gamma(beta)/mu, beta
 
 
 if __name__ == "__main__":
@@ -63,7 +64,7 @@ if __name__ == "__main__":
     colors = mpl.cm.viridis(np.linspace(0,1,len(mu_list)))
     for i_mu, mu in enumerate(mu_list):
         n_pts = 100
-        K_list = np.linspace(2, 10, n_pts)
+        K_list = np.linspace(2, 10, n_pts+1, endpoint=False)[1:]
 
         a_list = np.zeros_like(K_list)
         b_list = np.zeros_like(K_list)
@@ -71,8 +72,8 @@ if __name__ == "__main__":
         d_list = np.zeros_like(K_list)
 
         for i, K in enumerate(K_list):
-            kappa = mu/L
-            gamma, beta = get_gamma_beta_pair(kappa, K)
+            gamma, beta = get_gamma_beta_pair(mu, L, K)
+            assert gamma <= (2/L) * (1+beta)
             
             value, _, P, p, _, _ = hblyap.lyapunov_heavy_ball_momentum_multistep(beta, gamma, mu, L, rho, T, return_all=True)
             assert value == 0.
