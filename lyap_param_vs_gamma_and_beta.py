@@ -154,7 +154,7 @@ if __name__ == "__main__":
             else:
                 betas_tmp = betas
                 
-            ax.scatter(betas_tmp, betas_tmp, s=1)
+            ax.scatter(betas_tmp, params, s=1)
             
             if j == 0:
                 ax.set_title(r"$\bar\gamma=%.2f$" % gamma_hi, fontsize=17)
