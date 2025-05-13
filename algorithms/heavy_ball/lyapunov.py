@@ -209,14 +209,15 @@ def lyapunov_heavy_ball_momentum_multistep(beta, gamma, mu, L, rho, lyapunov_ste
     constraints += [ P[2,:] == 0 ] # g_{k-1}
     constraints += [ P[:,2] == 0 ]
     constraints += [ p[0] == 0]
-    constraints += [ p[1] >= 0]
 
     constraints += [ P[0,0] == P[1,1] ]
     constraints += [ P[0,0] == -P[0,1] ]
     constraints += [ P[0,3] == -P[1,3] ]
-            
+    
+    constraints += [ P[0,0] >= 0]
     constraints += [ P[0,3] >= 0]
     constraints += [ P[3,3] >= 0]
+    constraints += [ p[1] >= 0]
             
     # # constraints that preserve the largest green region    
     # constraints += [ P[0,2] == 0 ] # x_{k-1}, g_{k-1}

@@ -1,18 +1,18 @@
 import algorithms.heavy_ball.lyapunov as hblyap
 import numpy as np
 
-mu = 0.1 #0.75
-L = 1
-
-beta = 0.52836725292
-gamma = 2.5
-
-
-# mu = 0.3 #0.75
+# mu = 0.1
 # L = 1
 
-# beta = 0.6118306605 # 0.84996902 
+# beta = 0.52836725292
 # gamma = 2.5
+
+
+mu = 0.3 #0.75
+L = 1
+
+beta = 0.6118306605 # 0.84996902 
+gamma = 2.5
 
 # mu = 0.5
 # L = 1

@@ -4,6 +4,7 @@ import argparse
 import numpy as np
 from scipy.optimize import root_scalar
 import matplotlib.pyplot as plt
+import matplotlib as mpl
 
 import algorithms.heavy_ball.lyapunov as hblyap
 
@@ -54,9 +55,15 @@ if __name__ == "__main__":
 
     # fix mu
     mu_list = args.mu_list
-    for mu in mu_list:
+    nrows = 4
+    ncols = 1
+    fig_all, axs_all = plt.subplots(nrows=nrows, ncols=ncols, 
+                            figsize=(2.5*ncols,2.5*nrows),
+                            constrained_layout=True)
+    colors = mpl.cm.viridis(np.linspace(0,1,len(mu_list)))
+    for i_mu, mu in enumerate(mu_list):
         n_pts = 100
-        K_list = np.linspace(3, 10, n_pts)
+        K_list = np.linspace(2, 10, n_pts)
 
         a_list = np.zeros_like(K_list)
         b_list = np.zeros_like(K_list)
@@ -82,8 +89,6 @@ if __name__ == "__main__":
             d_list[i] = d
 
         # make plots
-        nrows = 4
-        ncols = 1
         fig, axs = plt.subplots(nrows=nrows, ncols=ncols, 
                                 figsize=(2.5*ncols,2.5*nrows),
                                 constrained_layout=True)
@@ -91,7 +96,14 @@ if __name__ == "__main__":
 
         for j, (params, label) in enumerate(zip([a_list, b_list, c_list, d_list], ["a", "b", "c", "d"])):
             ax = axs[j]
-            ax.plot(K_list, params, linewidth=1)
+            ax.plot(K_list, params, linewidth=2, color=colors[i_mu])
+            ax.set_ylabel(r"$%s$" % label, fontsize=17)    
+            
+            if j == nrows - 1:
+                ax.set_xlabel(r"$K$", fontsize=17)
+                
+            ax = axs_all[j]
+            ax.plot(K_list, params, linewidth=2, color=colors[i_mu], label=r"$\mu=%.2f$" % mu)
             ax.set_ylabel(r"$%s$" % label, fontsize=17)    
             
             if j == nrows - 1:
@@ -102,6 +114,14 @@ if __name__ == "__main__":
         # save
         figname = "lyap_param_vs_K_mu=%.2f.png" % mu
         fig_fn = os.path.join(TMP_DIR, figname)
-        plt.savefig(fig_fn)
+        fig.savefig(fig_fn)
         # plt.savefig(fig_fn.replace("png", "pdf"))
         print("Figure saved at \n%s" % fig_fn)
+
+    # save
+    axs_all[2].legend(frameon=False)
+    figname = "lyap_param_vs_K_all.png"
+    fig_fn = os.path.join(TMP_DIR, figname)
+    fig_all.savefig(fig_fn)
+    # plt.savefig(fig_fn.replace("png", "pdf"))
+    print("Figure saved at \n%s" % fig_fn)
