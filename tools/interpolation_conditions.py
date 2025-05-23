@@ -1,5 +1,6 @@
 from math import inf
 import cvxpy as cp
+import numpy as np
 
 
 def inner_product(u, v):
@@ -17,9 +18,20 @@ def smooth_strongly_convex_interpolation_i_j(pointi, pointj, mu, L):
 
     G = inner_product(gj, xi - xj) + 1 / (2 * L) * square(gi - gj) + mu / (2 * (1 - mu / L)) * square(
         xi - xj - 1 / L * gi + 1 / L * gj)
-    F = fj - fi
+    
+    M = np.array([
+        [-mu*L, mu*L, mu, -L],
+        [mu*L, -mu*L, -mu, L],
+        [mu, -mu, -1, 1],
+        [-L, L, 1, -1]])
+    
+    x = np.vstack([xi, xj])
+    g = np.vstack([gi, gj])
 
-    return G, F
+    G_ = -0.5 * np.vstack((x, g)).T @ M @ np.vstack((x, g))
+    F_ = (fj - fi)*(L-mu)
+
+    return G_, F_
 
 
 def lipschitz_operator_interpolation_i_j(pointi, pointj, L):

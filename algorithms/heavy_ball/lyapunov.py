@@ -95,9 +95,9 @@ def get_nonnegativity_constraints(P, p, mu, L):
     
     constraints = []
     constraints += [ - VP << matrix_combination ]
-    constraints += [ f_list[1] - fs - Vp <= vector_combination ] # break homogeneity
+    # constraints += [ f_list[1] - fs - Vp <= vector_combination ] # break homogeneity
     constraints += [ - Vp <= vector_combination ]
-    # constraints += [ cp.trace(P) >= 1] # break homogeneity
+    constraints += [ cp.trace(P) == 1] # break homogeneity
     constraints += [ dual >= 0 ]
     
     return constraints, dual
@@ -108,7 +108,7 @@ def get_monotonicity_constraints(P, p, beta, gamma, mu, L, rho, lyapunov_steps=1
     
     # Initialize
     x_list, g_list, f_list, xs, gs, fs = initialize_lyapunov_heavy_ball_momentum_multistep(K, T=lyapunov_steps)
-    
+
     # Run algorithm
     for t in range(1, lyapunov_steps + 1):
         xprev = x_list[t-1]
@@ -134,7 +134,7 @@ def get_monotonicity_constraints(P, p, beta, gamma, mu, L, rho, lyapunov_steps=1
     list_of_points = list(zip(x_list, g_list, f_list))
     list_of_points += [(xs, gs, fs)]
     matrix_combination, vector_combination, dual = interpolation_combination(list_of_points, mu, L, function_class="smooth strongly convex")
-    
+
     constraints = []
     constraints += [ VP_plus - rho * VP << matrix_combination ]
     constraints += [ Vp_plus - rho * Vp <= vector_combination ]
@@ -218,7 +218,19 @@ def lyapunov_heavy_ball_momentum_multistep(beta, gamma, mu, L, rho, lyapunov_ste
     constraints += [ P[0,3] >= 0]
     constraints += [ P[3,3] >= 0]
     constraints += [ p[1] >= 0]
-            
+    
+    ind_m = np.arange(dual_m.shape[0])
+    ind_nonzero = [(4+lyapunov_steps-1)*(t+1) for t in range(lyapunov_steps)]
+    # can't just set all of the following to zero; it'll nuke the gap filling
+    # though the smooth region remains
+    ind_zero = np.delete(ind_m, ind_nonzero)
+
+    # constraints += [ dual_m[ ind_zero ] == 0]
+    
+    # # the following constraints will kill the multi-step lyapunov verification
+    # # constraints += [ dual_m[4] == p[1]/(L-mu)] # vector monotonicity tightness
+
+                        
     # # constraints that preserve the largest green region    
     # constraints += [ P[0,2] == 0 ] # x_{k-1}, g_{k-1}
     # constraints += [ P[2,0] == 0 ]
