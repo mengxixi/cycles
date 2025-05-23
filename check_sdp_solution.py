@@ -16,6 +16,32 @@ TMP_DIR = "tmp"
 LOG_DIR = "log"
 
 
+max_beta_dict = {
+    "0.3" : {
+        "1" : 0.5846916894790035,
+        "2" : 0.584691705,
+        "3" : 0.58563166799,
+        "4" : 0.6128960287,
+        "5" : 0.621617564,
+        "6" : 0.620995589,
+        "7" : 0.620878129,
+        "8" : 0.623542679,
+        "9" : 0.62438227
+    },
+    "0.7" : {
+        "1" : 0.812679644673091,
+        "2" : 0.812679658866,
+        "3" : 0.81305912,
+        "4" : 0.8387521, 
+        "5" : 0.8761921999,
+        "6" : 0.885219,
+        "7" : 0.8866566,   
+        "8" : 0.8921705298979,
+        "9" : 0.8948179999,        
+    }
+}
+
+
 def gamma_beta_pair_on_boundary(K, kappa):
     phi = np.cos( 2*np.pi / K )
     def gamma(beta):
@@ -41,6 +67,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument('-mu', '--mu', type=float)
     parser.add_argument('-K', '--K', type=float)
+    parser.add_argument('-T', '--lyapunov_steps', type=int)
                             
     args = parser.parse_args()
     
@@ -55,30 +82,8 @@ if __name__ == "__main__":
     print("mu    = ", mu)
     print("gamma = ", gamma, "beta = ", beta)
     
-    # these all correspond to mu=0.7 and K=3.5
-    
-    # # T=1
-    # beta = 0.812679644673091
-    
-    # # T=2
-    # beta = 0.812679658866
-    
-    # # T=3
-    # beta = 0.81305912
-    
-    # # T=4
-    # beta = 0.8387521
-    
-    # # T=5
-    # beta = 0.8761921999
-    
-    # # T=6
-    # beta = 0.885219
-    
-    # T=7
-    beta = 0.8866566
-    
-    lyapunov_steps = 7
+    lyapunov_steps = args.lyapunov_steps
+    beta = max_beta_dict[str(mu)][str(lyapunov_steps)]
     rho = 1
 
     value, sdp_prob, P, p, dual_n, dual_m = hblyap.lyapunov_heavy_ball_momentum_multistep(beta, gamma, mu, L, rho, lyapunov_steps, return_all=True)

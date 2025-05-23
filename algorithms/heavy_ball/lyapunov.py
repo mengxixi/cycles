@@ -220,12 +220,15 @@ def lyapunov_heavy_ball_momentum_multistep(beta, gamma, mu, L, rho, lyapunov_ste
     constraints += [ p[1] >= 0]
     
     ind_m = np.arange(dual_m.shape[0])
-    ind_nonzero = [(4+lyapunov_steps-1)*(t+1) for t in range(lyapunov_steps)]
+    # ind_nonzero = [(4+lyapunov_steps-1)*(t+1) for t in range(lyapunov_steps)]
     # can't just set all of the following to zero; it'll nuke the gap filling
     # though the smooth region remains
-    ind_zero = np.delete(ind_m, ind_nonzero)
-
-    # constraints += [ dual_m[ ind_zero ] == 0]
+    # ind_zero = np.delete(ind_m, ind_nonzero)
+    # row_idx, col_idx = np.where(~np.eye(lyapunov_steps+3, dtype=bool))
+    # mask = row_idx > col_idx
+    # ind_backward = np.flatnonzero(mask)
+    
+    # constraints += [ dual_m[ ind_backward ] == 0]
     
     # # the following constraints will kill the multi-step lyapunov verification
     # # constraints += [ dual_m[4] == p[1]/(L-mu)] # vector monotonicity tightness
