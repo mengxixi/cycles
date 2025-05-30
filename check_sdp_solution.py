@@ -72,9 +72,10 @@ if __name__ == "__main__":
     rho = 1
     lyapunov_steps = args.lyapunov_steps
     # a version that guarantees to fill in the gap starting from smooth boundary
-    max_beta = bisection_max_beta(beta, gamma, mu, L, rho, lyapunov_steps)
-    # max_beta = 0.9847006#5#96#925877056
-    # max_beta = 0.621617#567#55#40#503
+    if lyapunov_steps > 1:
+        max_beta = bisection_max_beta(beta, gamma, mu, L, rho, lyapunov_steps)
+    else:
+        max_beta = beta
     print("mu    = ", mu)
     print("gamma = ", gamma)
     print("beta:                   ", beta)
@@ -89,11 +90,14 @@ if __name__ == "__main__":
     a = Pmat[0,0]
     c = Pmat[3,3]
 
-    print("a       ", a)
+    print("a       ", a, "        sqrt(a)  ", np.sqrt(a))
     print("b       ", b)
-    print("c       ", c)
+    print("c       ", c, "        sqrt(c)  ", np.sqrt(c))
     print("d       ", d)
-
+    
+    print("\n1/beta", 1/beta, "\n")
+    print("\nkappa/beta", kappa/beta, "\n")
+    
     print("dual variables corresponding to NONNEGATIVITY constraints")
     print(dual_n.value)
     

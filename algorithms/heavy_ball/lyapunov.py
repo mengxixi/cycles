@@ -260,11 +260,11 @@ def lyapunov_heavy_ball_momentum_multistep(beta, gamma, mu, L, rho, lyapunov_ste
     constraints += [ P[0,0] == -P[0,1] ]
     constraints += [ P[0,3] == -P[1,3] ]
     
-    # constraints += [ P[0,0] >= 0]
-    # constraints += [ P[0,3] >= 0]
-    # constraints += [ P[3,3] >= 0]
-    # constraints += [ p[1] >= 0]
-    
+    constraints += [ P[0,0] >= 0]
+    constraints += [ P[0,3] >= 0]
+    constraints += [ P[3,3] >= 0]
+    constraints += [ p[1] >= 0]
+            
     # # (k,k+1), (k+1,k+2),...
     # ind_nonzero_1 = [(4+lyapunov_steps-1)*(t+1) for t in range(lyapunov_steps)]
     # # (k,k+3), (k+1,k+4),...

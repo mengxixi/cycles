@@ -65,8 +65,8 @@ def get_HB_gamma_bisection_intervals_for_beta(mu, L, beta, lyapunov_steps):
 def lyapunov_bisection_search_multistep(method, mu, L, nb_points, precision, rho=1, lyapunov_steps=1):
     if method != "HB":
         raise NotImplementedError
-    lyapunov_search = lyapunov_heavy_ball_momentum_multistep
-    # lyapunov_search = lyapunov_heavy_ball_momentum_multistep_fixed
+    # lyapunov_search = lyapunov_heavy_ball_momentum_multistep
+    lyapunov_search = lyapunov_heavy_ball_momentum_multistep_fixed
 
     all_valid_gamma_intervals = []
     

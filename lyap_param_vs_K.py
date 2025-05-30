@@ -57,24 +57,29 @@ if __name__ == "__main__":
     # fix mu
     mu_list = args.mu_list
     nrows = 4
-    ncols = 1
+    ncols = 2
     fig_all, axs_all = plt.subplots(nrows=nrows, ncols=ncols, 
                             figsize=(2.5*ncols,2.5*nrows),
                             constrained_layout=True)
     colors = mpl.cm.viridis(np.linspace(0,1,len(mu_list)))
     for i_mu, mu in enumerate(mu_list):
         n_pts = 100
-        K_list = np.linspace(2, 10, n_pts+1, endpoint=False)[1:]
+        kappa = mu/L
+        _, beta_min = get_gamma_beta_pair(mu, L, K=3)
+        # beta_min = ( (2-kappa) - np.sqrt((1-kappa)*(5-kappa)) ) / (2*kappa - 1)
+        Betas = np.linspace(beta_min, 1, num=100)
+        Gammas = np.zeros_like(Betas)
+        for ib, beta in enumerate(Betas):
+            gamma = (1-beta)/((1-beta*kappa)**2)
+            gamma *= (1+3*beta*(1-kappa)-kappa*beta**2 + np.sqrt(4*beta*(2-kappa-kappa*beta)*(1+beta-2*beta*kappa)) )
+            Gammas[ib] = gamma
 
-        a_list = np.zeros_like(K_list)
-        b_list = np.zeros_like(K_list)
-        c_list = np.zeros_like(K_list)
-        d_list = np.zeros_like(K_list)
+        a_list = np.zeros_like(Betas)
+        b_list = np.zeros_like(Betas)
+        c_list = np.zeros_like(Betas)
+        d_list = np.zeros_like(Betas)
 
-        for i, K in enumerate(K_list):
-            gamma, beta = get_gamma_beta_pair(mu, L, K)
-            assert gamma <= (2/L) * (1+beta)
-            
+        for i, (gamma, beta) in enumerate(zip(Gammas, Betas)):            
             value, _, P, p, _, _ = hblyap.lyapunov_heavy_ball_momentum_multistep(beta, gamma, mu, L, rho, T, return_all=True)
             assert value == 0.
 
@@ -96,19 +101,33 @@ if __name__ == "__main__":
 
 
         for j, (params, label) in enumerate(zip([a_list, b_list, c_list, d_list], ["a", "b", "c", "d"])):
-            ax = axs[j]
-            ax.plot(K_list, params, linewidth=2, color=colors[i_mu])
+            ax = axs[j,0]
+            ax.plot(Gammas, params, linewidth=2, color=colors[i_mu])
             ax.set_ylabel(r"$%s$" % label, fontsize=17)    
             
             if j == nrows - 1:
-                ax.set_xlabel(r"$K$", fontsize=17)
+                ax.set_xlabel(r"$\gamma$", fontsize=17)
                 
-            ax = axs_all[j]
-            ax.plot(K_list, params, linewidth=2, color=colors[i_mu], label=r"$\mu=%.2f$" % mu)
+            ax = axs_all[j, 0]
+            ax.plot(Gammas, params, linewidth=2, color=colors[i_mu], label=r"$\mu=%.2f$" % mu)
             ax.set_ylabel(r"$%s$" % label, fontsize=17)    
             
             if j == nrows - 1:
-                ax.set_xlabel(r"$K$", fontsize=17)
+                ax.set_xlabel(r"$\gamma$", fontsize=17)
+                
+            ax = axs[j,1]
+            ax.plot(Betas, params, linewidth=2, color=colors[i_mu])
+            ax.set_ylabel(r"$%s$" % label, fontsize=17)    
+            
+            if j == nrows - 1:
+                ax.set_xlabel(r"$\beta$", fontsize=17)
+                
+            ax = axs_all[j, 1]
+            ax.plot(Betas, params, linewidth=2, color=colors[i_mu], label=r"$\mu=%.2f$" % mu)
+            ax.set_ylabel(r"$%s$" % label, fontsize=17)    
+            
+            if j == nrows - 1:
+                ax.set_xlabel(r"$\beta$", fontsize=17)
 
         fig.suptitle(r"$\mu=%.2f$" % mu, fontsize=17)
 
@@ -120,7 +139,8 @@ if __name__ == "__main__":
         print("Figure saved at \n%s" % fig_fn)
 
     # save
-    axs_all[2].legend(frameon=False)
+    axs_all[2,0].legend(frameon=False)
+    axs_all[2,1].legend(frameon=False)
     figname = "lyap_param_vs_K_all.png"
     fig_fn = os.path.join(TMP_DIR, figname)
     fig_all.savefig(fig_fn)
