@@ -6,7 +6,7 @@ import numpy as np
 
 import tools.cycle_utils as cu
 from tools.file_management import write_result_file, write_result_file_multistep
-from algorithms.heavy_ball.lyapunov import lyapunov_heavy_ball_momentum_multistep, lyapunov_heavy_ball_momentum_multistep_fixed
+from algorithms.heavy_ball.lyapunov import lyapunov_heavy_ball_momentum_multistep, lyapunov_heavy_ball_momentum_multistep_fixed, lyapunov_heavy_ball_momentum_multistep_all_history
 from algorithms.nag.lyapunov import lyapunov_accelerated_gradient_strongly_convex
 from algorithms.inexact_gradient_descent.lyapunov import lyapunov_inexact_gradient_descent
 from algorithms.three_operator_splitting.lyapunov import lyapunov_three_operator_splitting
@@ -66,7 +66,8 @@ def lyapunov_bisection_search_multistep(method, mu, L, nb_points, precision, rho
     if method != "HB":
         raise NotImplementedError
     # lyapunov_search = lyapunov_heavy_ball_momentum_multistep
-    lyapunov_search = lyapunov_heavy_ball_momentum_multistep_fixed
+    # lyapunov_search = lyapunov_heavy_ball_momentum_multistep_fixed
+    lyapunov_search = lyapunov_heavy_ball_momentum_multistep_all_history
 
     all_valid_gamma_intervals = []
     
