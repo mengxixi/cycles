@@ -92,6 +92,97 @@ def write_result_file_multistep(logdir, filename, gamma_intervals, betas):
             f.write("{}\t{}\n".format(";".join(gamma_intervals_str), beta))
 
 
+def get_colored_graphics_HB_lyapunov_all_history(mu, L, max_lyapunov_steps, folder="results/"):
+    method = "HB"
+    figdir = os.path.join(folder, "figures")
+    if not os.path.isdir(figdir):
+        os.makedirs(figdir)
+
+    axs = []
+    figs = []
+
+    # Background
+    betas = np.linspace(0, 1, 300 + 1, endpoint=False)[1:]
+
+    # Lyapunov
+    T = max_lyapunov_steps
+    fn = "{}_mu{:.2f}_L{:.0f}_steps_{:d}.txt".format(method, mu, L, T)
+    result_path = os.path.join(folder, "lyapunov", fn)
+    gamma_intervals_lyap, betas_lyap = read_result_file_multistep(file_path=result_path)
+    
+    x_green = list()
+    y_green = list()
+    for gamma_intervals, beta in zip(gamma_intervals_lyap, betas_lyap):
+        for gamma_min, gamma_max in gamma_intervals:
+            if gamma_max - gamma_min > .01:
+                x_green += list(np.linspace(gamma_min, gamma_max, 500))
+                y_green += [beta] * 500
+            
+    # now do a separate one where it's not unionized
+    fig_T, ax_T = plt.subplots(nrows=1, ncols=1, figsize=(15, 9), 
+                                constrained_layout=True)
+    ax_T.plot(x_green, y_green, '.', color="yellowgreen", label="convergence")
+    
+    # ========== plot cycles manually for all axes, separate and union ==========
+    valid_tunings = cu.get_cycle_tunings(mu, L, betas)
+    for _, (K, valid_betas, valid_Lgammas) in valid_tunings.items():
+        color = "red" if K.is_integer() else "orange"
+        ax_T.scatter(valid_Lgammas, valid_betas, color=color, s=1, zorder=100)
+        
+    m = 100
+    Lgammas = np.linspace(2, 4, num=m)
+    beta_Q = Lgammas/2 - 1
+    
+    ax_T.plot(Lgammas, beta_Q, color="black")
+    ax_T.plot(np.linspace(0,2,10), np.zeros(10), color="black")
+    ax_T.axhline(1.0, color="black")
+    ax_T.set_xlabel(r"$\gamma$")
+    ax_T.set_ylabel(r"$\beta$", rotation=0, labelpad=10)
+    
+    # plot the union of all cycle boundaries including fractional K
+    # theoretically computed
+    kappa = mu/L
+    
+    omega = 8
+    K_max = omega*10
+    start = 2
+    K_range = [i/omega for i in range(omega*start, K_max+1)]
+    
+    Phis = np.cos( 2*np.pi /  np.array(K_range) )
+    Gammas = np.zeros_like(Phis)
+    Betas = np.zeros_like(Phis)
+
+    for i, phi in enumerate(Phis):
+        def gamma(beta):
+            return kappa*(beta**2 - 2*(2*phi-1)*beta + 1) / (kappa*beta + 1)
+        
+        def func(beta):
+            # now this is the function we want to solve the roots for
+            q4 = (2*kappa**2 - kappa)*beta**4
+            q3 = (-4*kappa**2*phi**2 - 2*kappa**2 + 4*kappa - 2)*beta**3
+            q2 = (8*phi*kappa**2 - 2*kappa**2 + 8*kappa*phi**2 - 16*kappa*phi + 2*kappa + 8*phi - 2)*beta**2
+            q1 = (-4*phi**2 - 2*kappa**2 + 4*kappa - 2)*beta
+            q0 = -kappa + 2
+            
+            return q4 + q3 + q2 + q1 + q0
+        
+        sol = root_scalar(func, bracket=[0,1], method="brentq")
+        beta = sol.root
+        Betas[i] = beta
+        Gammas[i] = gamma(beta)
+        
+    ax_T.scatter(Gammas/mu, Betas, s=10, color="black", zorder=100)
+    
+    # also plot Ghadimi's region
+    Betas = np.linspace(0, 1, 300 + 1, endpoint=False)[1:]
+    Gammas = np.minimum(2*(1-Betas**2) / (L - mu*Betas), 2/L)
+    ax_T.scatter(Gammas, Betas, s=10, color="darkgreen", zorder=100)
+
+    # ========================================
+    figfn = "{}_mu{:.2f}_L{:.0f}_steps{}_all_history_colored.png".format(method, mu, L, max_lyapunov_steps)
+    fig_T.savefig(os.path.join(figdir, figfn), bbox_inches="tight")
+    
+
 def get_colored_graphics_HB_multistep_lyapunov(mu, L, max_lyapunov_steps, folder="results/"):
     method = "HB"
     figdir = os.path.join(folder, "figures")
