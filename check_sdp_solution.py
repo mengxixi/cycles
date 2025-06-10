@@ -32,7 +32,7 @@ def bisection_max_beta(beta_start, gamma, mu, L, rho, lyapunov_steps):
     return beta_min
 
 
-def gamma_beta_pair_on_boundary(K, kappa):
+def gamma_beta_pair_on_lyapunov_boundary(K, kappa):
     phi = np.cos( 2*np.pi / K )
     def gamma(beta):
         return kappa*(beta**2 - 2*(2*phi-1)*beta + 1) / (kappa*beta + 1)
@@ -68,7 +68,7 @@ if __name__ == "__main__":
     
     assert K >= 2
     
-    gamma, beta = gamma_beta_pair_on_boundary(K, kappa)
+    gamma, beta = gamma_beta_pair_on_lyapunov_boundary(K, kappa)
     rho = 1
     lyapunov_steps = args.lyapunov_steps
     # a version that guarantees to fill in the gap starting from smooth boundary
