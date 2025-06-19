@@ -171,7 +171,7 @@ def get_nonnegativity_constraints(P, p, mu, L):
     constraints += [ - VP << matrix_combination ]
     # constraints += [ f_list[1] - fs - Vp <= vector_combination ] # break homogeneity
     constraints += [ - Vp <= vector_combination ]
-    constraints += [ cp.trace(P) == 1 ] # break homogeneity
+    constraints += [ cp.trace(P) + cp.sum(p) == 1 ] # break homogeneity
     constraints += [ dual >= 0 ]
     
     return constraints, dual
@@ -274,19 +274,24 @@ def lyapunov_heavy_ball_momentum_multistep_smooth_boundary(beta, gamma, mu, L, r
     constraints_m, dual_m = get_monotonicity_constraints(P, p, beta=beta, gamma=gamma, mu=mu, L=L, rho=rho, lyapunov_steps=lyapunov_steps)
     constraints = constraints_n + constraints_m
     
-    # constraints that give us the smooth boundary
-    constraints += [ P[2,:] == 0 ] # g_{k-1}
-    constraints += [ P[:,2] == 0 ]
-    constraints += [ p[0] == 0]
-
-    constraints += [ P[0,0] == P[1,1] ]
+    constraints += [ P[0,0] ==  P[1,1] ]
     constraints += [ P[0,0] == -P[0,1] ]
+    constraints += [ P[0,2] == -P[1,2] ]
     constraints += [ P[0,3] == -P[1,3] ]
     
-    # constraints += [ P[0,0] >= 0]
-    # constraints += [ P[0,3] >= 0]
-    # constraints += [ P[3,3] >= 0]
-    # constraints += [ p[1] >= 0]
+    constraints += [ P[0,0] ==  P[1,1] ]
+    constraints += [ P[0,0] == -P[0,1] ]
+    constraints += [ P[0,2] == -P[1,2] ]
+    constraints += [ P[0,3] == -P[1,3] ]
+    
+    constraints += [ P[1,2] >= 0 ]
+    constraints += [ P[1,3] >= 0 ]
+    constraints += [ P[2,3] >= 0 ]
+    constraints += [ P[2,2] >= 0 ]
+    constraints += [ P[3,3] >= 0 ]
+    
+    constraints += [ p[0] >= 0 ]
+    constraints += [ p[1] >= 0 ]
         
     # 0 if there exists a Lyapunov
     # inf otherwise
@@ -319,71 +324,20 @@ def lyapunov_heavy_ball_momentum_multistep(beta, gamma, mu, L, rho, lyapunov_ste
     constraints_m, dual_m = get_monotonicity_constraints(P, p, beta=beta, gamma=gamma, mu=mu, L=L, rho=rho, lyapunov_steps=lyapunov_steps)
     constraints = constraints_n + constraints_m
     
-    # # constraints correspond to Ghadimi's Lyapunov function
-    # constraints += [ P[2,:] == 0 ]
-    # constraints += [ P[:,2] == 0 ]
-    # constraints += [ P[3,:] == 0 ]
-    # constraints += [ P[:,3] == 0 ]
-    
-    # constraints that give us the smooth boundary
-    constraints += [ P[2,:] == 0 ] # g_{k-1}
-    constraints += [ P[:,2] == 0 ]
-    constraints += [ p[0] == 0]
-
-    constraints += [ P[0,0] == P[1,1] ]
+    constraints += [ P[0,0] ==  P[1,1] ]
     constraints += [ P[0,0] == -P[0,1] ]
+    constraints += [ P[0,2] == -P[1,2] ]
     constraints += [ P[0,3] == -P[1,3] ]
     
-    constraints += [ P[0,0] >= 0]
-    constraints += [ P[0,3] >= 0]
-    constraints += [ P[3,3] >= 0]
-    constraints += [ p[1] >= 0]
+    constraints += [ P[1,2] >= 0 ]
+    constraints += [ P[1,3] >= 0 ]
+    constraints += [ P[2,3] >= 0 ]
+    constraints += [ P[2,2] >= 0 ]
+    constraints += [ P[3,3] >= 0 ]
+    
+    constraints += [ p[0] >= 0 ]
+    constraints += [ p[1] >= 0 ]
             
-    # # (k,k+1), (k+1,k+2),...
-    # ind_nonzero_1 = [(4+lyapunov_steps-1)*(t+1) for t in range(lyapunov_steps)]
-    # # (k,k+3), (k+1,k+4),...
-    # ind_nonzero_4 = [i+3 for i in ind_nonzero_1[:-3]]
-    # ind_nonzero_5 = [i+1 for i in ind_nonzero_4[:-1]]
-    # # (k+3,k), (k+4,k+1),...
-    # ind_nonzero_3r = [i-3 for i in ind_nonzero_1[3:]]
-    # ind_nonzero_3r += [ind_nonzero_3r[-1]+3+lyapunov_steps]
-    # ind_nonzero_4r = [i-1 for i in ind_nonzero_3r[1:]]
-    # ind_nonzero = ind_nonzero_1 + ind_nonzero_4 + ind_nonzero_5 + ind_nonzero_3r + ind_nonzero_4r
-    # ind_m = np.arange(dual_m.shape[0])
-    # ind_zero = np.delete(ind_m, ind_nonzero)
-    
-    # ind_zero = []
-    # ind = 0
-    # for i in range(lyapunov_steps+3):
-    #     for j in range(lyapunov_steps+3):
-    #         if i == j:
-    #             continue
-    #         # all indices coresponding to either (_,*) or (*,_)
-    #         if i == lyapunov_steps+2 or j == lyapunov_steps+2:
-    #             ind_zero += [ind]
-            
-    #         # elif j != i+1 and j != i+4 and j != i+5 and i != j+3 and i != j+2:
-    #         #     ind_zero += [ind]
-            
-    #         ind += 1
-    # constraints += [ dual_m[ ind_zero ] == 0]
-        
-    # # the following constraints will kill the multi-step lyapunov verification
-    # # constraints += [ dual_m[4] == p[1]/(L-mu)] # vector monotonicity tightness
-
-                        
-    # # constraints that preserve the largest green region    
-    # constraints += [ P[0,2] == 0 ] # x_{k-1}, g_{k-1}
-    # constraints += [ P[2,0] == 0 ]
-    
-    # constraints += [ P[1,2] == 0 ] # x_k, g_{k-1}
-    # constraints += [ P[2,1] == 0 ]
-    
-    # constraints += [ P[1,3] == 0 ] # x_k, g_k
-    # constraints += [ P[3,1] == 0 ]
-    
-    # constraints += [ P[0,3] == 0 ] # x_{k-1}, g_k
-    # constraints += [ P[3,0] == 0 ]
         
     # 0 if there exists a Lyapunov
     # inf otherwise
@@ -399,17 +353,6 @@ def lyapunov_heavy_ball_momentum_multistep(beta, gamma, mu, L, rho, lyapunov_ste
         print(e)
         print("Marking problem as infeasible...")
         value = inf 
-        # print("try solving with SCS...")
-        # value = prob.solve(solver="SCS")
-        
-        # if value > 1e-3:
-        #     warnings.warn("SCS returning suboptimal result, discarding...")
-        #     value = inf
-        #     P.value = None
-        #     p.value = None
-        #     dual_m.value = None
-        #     dual_n.value = None
-
 
     if return_all:
         return value, prob, P, p, dual_n, dual_m

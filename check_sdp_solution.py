@@ -85,18 +85,22 @@ if __name__ == "__main__":
     print("\nOptimal value", value, "\n")
 
     Pmat = P.value
-    d = p.value[1]
-    b = Pmat[0,3]
-    a = Pmat[0,0]
-    c = Pmat[3,3]
-
-    print("a       ", a, "        sqrt(a)  ", np.sqrt(a))
-    print("b       ", b)
-    print("c       ", c, "        sqrt(c)  ", np.sqrt(c))
-    print("d       ", d)
+    print("P\n", Pmat)
     
-    print("\n1/beta", 1/beta, "\n")
-    print("\nkappa/beta", kappa/beta, "\n")
+    pvec = p.value
+    print("p\n", pvec)
+    
+    
+    # d = p.value[1]
+    # b = Pmat[0,3]
+    # a = Pmat[0,0]
+    # c = Pmat[3,3]
+
+    # print("a       ", a, "        sqrt(a)  ", np.sqrt(a))
+    # print("b       ", b)
+    # print("c       ", c, "        sqrt(c)  ", np.sqrt(c))
+    # print("d       ", d)
+    
     
     print("dual variables corresponding to NONNEGATIVITY constraints")
     print(dual_n.value)
@@ -126,7 +130,7 @@ if __name__ == "__main__":
     plt.savefig(fig_fn)
     print("Figure saved at \n%s" % fig_fn)
 
-    np.set_printoptions(precision=2)
-    print("dual variables corresponding to MONOTONICITY constraints")
-    print(M)
+    # np.set_printoptions(precision=2)
+    # print("dual variables corresponding to MONOTONICITY constraints")
+    # print(M)
     
