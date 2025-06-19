@@ -10,9 +10,14 @@ import matplotlib as mpl
 import matplotlib.lines as mlines
 from mpl_toolkits.axes_grid1.inset_locator import zoomed_inset_axes, mark_inset
 import tools.cycle_utils as cu
+# import pysr
+# from pysr import PySRRegressor
 
-import pysr
-from pysr import PySRRegressor
+import algorithms.heavy_ball.lyapunov as hblyap
+from PEPit import PEP
+from PEPit.functions import SmoothStronglyConvexFunction
+
+import cvxpy as cp
 
 size = 19
 mpl.rcParams.update({
@@ -183,7 +188,7 @@ def get_colored_graphics_HB_lyapunov_all_history(mu, L, max_lyapunov_steps, fold
     fig_T.savefig(os.path.join(figdir, figfn), bbox_inches="tight")
     
 
-def get_colored_graphics_HB_multistep_lyapunov(mu, L, max_lyapunov_steps, folder="results/"):
+def get_colored_graphics_HB_multistep_lyapunov(mu, L, max_lyapunov_steps, pep_check=True, folder="results/"):
     method = "HB"
     figdir = os.path.join(folder, "figures")
     if not os.path.isdir(figdir):
@@ -205,55 +210,33 @@ def get_colored_graphics_HB_multistep_lyapunov(mu, L, max_lyapunov_steps, folder
         
         x_green = list()
         y_green = list()
+        # to keep track of points that are also verifiable by PEPit
+        x_pepit = list()
+        y_pepit = list()
         for gamma_intervals, beta in zip(gamma_intervals_lyap, betas_lyap):
             for gamma_min, gamma_max in gamma_intervals:
                 if gamma_max - gamma_min > .01:
                     x_green += list(np.linspace(gamma_min, gamma_max, 500))
                     y_green += [beta] * 500
+                    
+                    # verify via pepit at (gamma_max, beta)
+                    if pep_check:
+                        pep_ok = verify_multistep_lyapunov_via_pepit(gamma_max, beta, mu, L, T)
+                        if pep_ok:
+                            x_pepit += list(np.linspace(gamma_min, gamma_max, 500))
+                            y_pepit += [beta] * 500
                 
         # add lyapunov
         ax_union.plot(x_green, y_green, '.', color="yellowgreen", label="convergence")
+        ax_union.plot(x_pepit, y_pepit, '.', color="deeppink", label="convergence")
         
         # now do a separate one where it's not unionized
         fig_T, ax_T = plt.subplots(nrows=1, ncols=1, figsize=(15, 9), 
                                    constrained_layout=True)
-        
-        # ======== also fit a curve to the boundary ========
-        # if T == 1:
-        #     b_gammas = []
-        #     b_betas = []
-        #     for gamma_intervals, beta in zip(gamma_intervals_lyap, betas_lyap):
-        #         # just take the first entry T=1
-        #         gamma_max = gamma_intervals[0][1]
-        #         bound = cu.bound("HB", L, beta)
-        #         if np.abs(gamma_max - bound) < 1e-2:
-        #             # toss out the values that are capped at the boundary
-        #             continue
-        #         b_gammas.append(gamma_max)
-        #         b_betas.append(beta)
-            
-        #     # print("mu", mu)
-        #     # # print(np.min(b_betas))
-        #     # coeffs = np.polyfit(b_betas[:100], b_gammas[:100], deg=2)
-        #     # print(coeffs)
-        #     # poly = np.poly1d(coeffs)
-
-        #     def model(zz):
-        #         return (zz - 1.0044357314273449)*(-np.exp(3.069555330084005*zz)-1.2140179016574235)
-
-        #     yy = np.linspace(np.min(b_betas), 1, 500)
-        #     xx = model(yy)
-        #     # ind = np.argmin( np.abs(2*(1+yy) - xx) )
-        #     # beta_cross = yy[ind]
-        #     # print(beta_cross)
-        #     # gamma_cross = xx[ind]
-        #     # ax_T.scatter(gamma_cross, beta_cross, s=50, color="darkgreen", zorder=100)
-        #     ax_T.plot(xx, yy, linewidth=2, color="darkgreen", zorder=100)
-        # =======================================================
-        
         axs += [ax_T]
         figs += [fig_T]
         ax_T.plot(x_green, y_green, '.', color="yellowgreen", label="convergence")
+        ax_T.plot(x_pepit, y_pepit, '.', color="deeppink", label="convergence")
         
     # ========== plot cycles manually for all axes, separate and union ==========
     valid_tunings = cu.get_cycle_tunings(mu, L, betas)
@@ -429,6 +412,79 @@ def get_colored_graphics(method, mu, L, max_cycle_length, add_background=True, a
 
     figname = "{}_mu{:.2f}_L{:.0f}_colored.png".format(method, mu, L)
     plt.savefig(os.path.join(figdir, figname), bbox_inches="tight")
+
+
+def verify_multistep_lyapunov_via_pepit(gamma, beta, mu, L, T):
+    rho = 1 
+    value, _, P, p, _, _ = hblyap.lyapunov_heavy_ball_momentum_multistep(beta, gamma, mu, L, rho, T, return_all=True)
+    assert value == 0.
+    
+    # extract the values for corresponding terms in the lyapunov function
+    Pmat = P.value
+    pvec = p.value
+    
+    a = Pmat[0,0]
+    b = Pmat[2,2]
+    c = Pmat[3,3]
+    d = Pmat[1,2]
+    e = Pmat[1,3]
+    f = Pmat[2,3]
+    
+    p0 = pvec[0]
+    p1 = pvec[1]
+    
+    # Instantiate PEP
+    problem = PEP()
+
+    # Declare a smooth strongly convex function
+    func = problem.declare_function(SmoothStronglyConvexFunction, mu=mu, L=L)
+
+    # # Start by defining its unique optimal point xs = x_* and corresponding function value fs = f_*
+    xs = func.stationary_point()
+    fs = func(xs)
+
+    # Then define the starting point x0 of the algorithm as well as corresponding function value f0
+    x0 = problem.set_initial_point()
+    x1 = problem.set_initial_point()
+    f0 = func(x0)
+    g0, f0 = func.oracle(x0)
+    g1, f1 = func.oracle(x1)
+    
+    V0 = a*(x1-x0)**2 + 2*d*(x1-x0)*g0 + 2*e*(x1-x0)*g1 + 2*f*g1*g0 + b*g0**2 + c*g1**2 \
+        + p0*(f0-fs) + p1*(f1-fs)
+    
+    x_previous = x0
+    x_current = x1
+    for _ in range(T):
+      x_next = x_current + beta*(x_current-x_previous) - gamma * func.gradient(x_current)
+      x_previous = x_current
+      x_current = x_next
+    
+    xk = x_previous
+    xkk = x_current
+    gk, fk = func.oracle(xk)
+    gkk, fkk = func.oracle(xkk)  
+    
+    VT = a*(xkk-xk)**2 + 2*d*(xkk-xk)*gk + 2*e*(xkk-xk)*gkk + 2*f*gkk*gk + b*gk**2 + c*gkk**2 \
+        + p0*(fk-fs) + p1*(fkk-fs)
+
+    # Set the initial constraint that is the distance between f(x0) and f(x^*)
+    problem.set_initial_condition(V0 <= 1)
+
+    # Set the performance metric to the final distance to optimum
+    problem.set_performance_metric(VT)
+    
+    # Solve the PEP
+    try: # Try to solve the problem, handle exceptions if they occur
+        pepit_tau = problem.solve(verbose=0)
+    except cp.error.SolverError: # Catch the specific ValueError
+        print(f"Solver failed for gamma={gamma}, beta={beta}. Returning inf")
+        return False # Return inf for both rates in case of failure
+    if pepit_tau is None:
+      # Idk why it sometimes returns None
+      return False
+  
+    return pepit_tau <= 1.
 
 
 if __name__ == "__main__":
