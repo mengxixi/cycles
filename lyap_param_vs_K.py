@@ -1,5 +1,6 @@
 import os
 import argparse
+import pickle 
 
 import numpy as np
 from scipy.optimize import root_scalar
@@ -16,7 +17,7 @@ plt.rcParams.update({
 })
 
 TMP_DIR = "tmp"
-
+LOG_DIR = "logs"
 
 def get_gamma_beta_pair(mu, L, K):
     kappa = mu/L
@@ -56,7 +57,7 @@ if __name__ == "__main__":
 
     # fix mu
     mu_list = args.mu_list
-    nrows = 4
+    nrows = 8
     ncols = 2
     fig_all, axs_all = plt.subplots(nrows=nrows, ncols=ncols, 
                             figsize=(2.5*ncols,2.5*nrows),
@@ -65,7 +66,7 @@ if __name__ == "__main__":
     for i_mu, mu in enumerate(mu_list):
         n_pts = 100
         kappa = mu/L
-        _, beta_min = get_gamma_beta_pair(mu, L, K=3)
+        _, beta_min = get_gamma_beta_pair(mu, L, K=4)
         # beta_min = ( (2-kappa) - np.sqrt((1-kappa)*(5-kappa)) ) / (2*kappa - 1)
         Betas = np.linspace(beta_min, 1, num=100)
         Gammas = np.zeros_like(Betas)
@@ -78,29 +79,53 @@ if __name__ == "__main__":
         b_list = np.zeros_like(Betas)
         c_list = np.zeros_like(Betas)
         d_list = np.zeros_like(Betas)
-
+        e_list = np.zeros_like(Betas)
+        f_list = np.zeros_like(Betas)
+        p1_list = np.zeros_like(Betas)
+        p2_list = np.zeros_like(Betas)
+        
         for i, (gamma, beta) in enumerate(zip(Gammas, Betas)):            
             value, _, P, p, _, _ = hblyap.lyapunov_heavy_ball_momentum_multistep(beta, gamma, mu, L, rho, T, return_all=True)
             assert value == 0.
 
-            b = P.value[0,3]
             a = P.value[0,0]
+            b = P.value[2,2]
             c = P.value[3,3]
-            d = p.value[1]
+            d = P.value[1,2]
+            e = P.value[1,3]
+            f = P.value[2,3]
+            p1 = p.value[0]
+            p2 = p.value[1]
             
-            # mu_factor = (mu**1.5)/2.5
-            a_list[i] = a #*mu_factor
+            a_list[i] = a
             b_list[i] = b
             c_list[i] = c
             d_list[i] = d
+            e_list[i] = e
+            f_list[i] = f
+            p1_list[i] = p1
+            p2_list[i] = p2
 
         # make plots
         fig, axs = plt.subplots(nrows=nrows, ncols=ncols, 
                                 figsize=(2.5*ncols,2.5*nrows),
                                 constrained_layout=True)
 
-
-        for j, (params, label) in enumerate(zip([a_list, b_list, c_list, d_list], ["a", "b", "c", "d"])):
+        coeff_lists = [a_list, b_list, c_list, d_list, e_list, f_list, p1_list, p2_list]
+        label_list = ["a", "b", "c", "d", "e", "f", "p1", "p2"]
+        for j, (params, label) in enumerate(zip(coeff_lists, label_list)):
+            # save the coeffs for fitting purposes
+            coeff_fn = os.path.join(LOG_DIR, "lyap_param_mu=%.2f_%s.pkl" % (mu, label))
+            with open(coeff_fn, "wb") as f:
+                coeff_dict = {
+                    "label" : label,
+                    "gammas" : Gammas,
+                    "betas" : Betas,
+                    "coeffs" : params,
+                }
+                pickle.dump(coeff_dict, f)
+            
+            # make plot
             ax = axs[j,0]
             ax.plot(Gammas, params, linewidth=2, color=colors[i_mu])
             ax.set_ylabel(r"$%s$" % label, fontsize=17)    
@@ -137,6 +162,7 @@ if __name__ == "__main__":
         fig.savefig(fig_fn)
         # plt.savefig(fig_fn.replace("png", "pdf"))
         print("Figure saved at \n%s" % fig_fn)
+        
 
     # save
     axs_all[2,0].legend(frameon=False)
