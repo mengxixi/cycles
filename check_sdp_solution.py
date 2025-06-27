@@ -57,7 +57,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument('-mu', '--mu', type=float)
     parser.add_argument('-K', '--K', type=float)
-    parser.add_argument('-T', '--lyapunov_steps', type=int)
+    parser.add_argument('-T', '--lyapunov_steps', type=int, default=1)
                             
     args = parser.parse_args()
     
@@ -81,29 +81,38 @@ if __name__ == "__main__":
     print("beta:                   ", beta)
     print("max beta for T=%d steps: " % lyapunov_steps, max_beta)
     
-    value, sdp_prob, P, p, dual_n, dual_m = hblyap.lyapunov_heavy_ball_momentum_multistep(max_beta, gamma, mu, L, rho, lyapunov_steps, return_all=True)
+    value, sdp_prob, P, p, dual_n, dual_m = hblyap.lyapunov_heavy_ball_momentum_multistep_smooth_boundary(max_beta, gamma, mu, L, rho, lyapunov_steps, return_all=True)
     print("\nOptimal value", value, "\n")
 
     Pmat = P.value
-    print("P\n", Pmat)
+    # print("P\n", Pmat)
     
+    print("P rank = ", np.sum(np.linalg.svdvals(Pmat)>1e-6))
+        
     pvec = p.value
-    print("p\n", pvec)
-    
-    
-    # d = p.value[1]
-    # b = Pmat[0,3]
-    # a = Pmat[0,0]
-    # c = Pmat[3,3]
+    # print("p\n", pvec)
 
-    # print("a       ", a, "        sqrt(a)  ", np.sqrt(a))
-    # print("b       ", b)
-    # print("c       ", c, "        sqrt(c)  ", np.sqrt(c))
-    # print("d       ", d)
+    d = p.value[1]
+    b = Pmat[0,3]
+    a = Pmat[0,0]
+    c = Pmat[3,3]
+
+    print("a       ", a)
+    print("b       ", b)
+    print("c       ", c)
+    print("d       ", d)
     
+    print("test",(1-np.sqrt(3*mu))*beta)
+        
+    # print("dual variables corresponding to NONNEGATIVITY constraints")
+    # print(dual_n.value)
     
-    print("dual variables corresponding to NONNEGATIVITY constraints")
-    print(dual_n.value)
+    # print("dual variables corresponding to MONOTONICITY constraints")
+    # print(dual_m.value)
+    
+    # lambdakk1 = dual_m.value[4]
+    # print("lambda(k, k+1)", lambdakk1)
+    # print("d/(1-mu)      ", d/(1-mu))
     
     mm = lyapunov_steps+3
     M = np.zeros((mm, mm))

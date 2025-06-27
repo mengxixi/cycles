@@ -2,6 +2,7 @@ import os
 import argparse
 import pickle 
 
+from math import inf
 import numpy as np
 from scipy.optimize import root_scalar
 import matplotlib.pyplot as plt
@@ -66,33 +67,39 @@ if __name__ == "__main__":
     for i_mu, mu in enumerate(mu_list):
         n_pts = 100
         kappa = mu/L
-        _, beta_min = get_gamma_beta_pair(mu, L, K=4)
+        # _, beta_min = get_gamma_beta_pair(mu, L, K=3)
         # beta_min = ( (2-kappa) - np.sqrt((1-kappa)*(5-kappa)) ) / (2*kappa - 1)
-        Betas = np.linspace(beta_min, 1, num=100)
+        delta = 1-1e-1
+        K_range = np.linspace(3, 10, 100)
+        Betas = [get_gamma_beta_pair(mu, L, K=k)[1] for k in K_range]
+        # Gammas = [get_gamma_beta_pair(mu, L, K=k)[0] for k in K_range]
+        # Betas = np.linspace(beta_min, 1, num=100)
         Gammas = np.zeros_like(Betas)
         for ib, beta in enumerate(Betas):
             gamma = (1-beta)/((1-beta*kappa)**2)
             gamma *= (1+3*beta*(1-kappa)-kappa*beta**2 + np.sqrt(4*beta*(2-kappa-kappa*beta)*(1+beta-2*beta*kappa)) )
             Gammas[ib] = gamma
 
-        a_list = np.zeros_like(Betas)
-        b_list = np.zeros_like(Betas)
-        c_list = np.zeros_like(Betas)
-        d_list = np.zeros_like(Betas)
-        e_list = np.zeros_like(Betas)
-        f_list = np.zeros_like(Betas)
-        p1_list = np.zeros_like(Betas)
-        p2_list = np.zeros_like(Betas)
+        a_list = np.full_like(Betas, np.nan)
+        b_list = np.full_like(Betas, np.nan)
+        c_list = np.full_like(Betas, np.nan)
+        d_list = np.full_like(Betas, np.nan)
+        e_list = np.full_like(Betas, np.nan)
+        f_list = np.full_like(Betas, np.nan)
+        p1_list = np.full_like(Betas, np.nan)
+        p2_list = np.full_like(Betas, np.nan)
         
         for i, (gamma, beta) in enumerate(zip(Gammas, Betas)):            
-            value, _, P, p, _, _ = hblyap.lyapunov_heavy_ball_momentum_multistep(beta, gamma, mu, L, rho, T, return_all=True)
-            assert value == 0.
+            value, _, P, p, _, _ = hblyap.lyapunov_heavy_ball_momentum_multistep_smooth_boundary(beta, gamma, mu, L, rho, T, return_all=True)
+            if value == inf:
+                print("Not verified for mu=%f, skipping.." % mu)
+                continue
 
             a = P.value[0,0]
             b = P.value[2,2]
             c = P.value[3,3]
             d = P.value[1,2]
-            e = P.value[1,3]
+            e = P.value[0,3]
             f = P.value[2,3]
             p1 = p.value[0]
             p2 = p.value[1]
@@ -114,17 +121,23 @@ if __name__ == "__main__":
         coeff_lists = [a_list, b_list, c_list, d_list, e_list, f_list, p1_list, p2_list]
         label_list = ["a", "b", "c", "d", "e", "f", "p1", "p2"]
         for j, (params, label) in enumerate(zip(coeff_lists, label_list)):
+            # xx = np.cos(2*np.pi/K_range)
+            xx = K_range
+
             # save the coeffs for fitting purposes
-            coeff_fn = os.path.join(LOG_DIR, "lyap_param_mu=%.2f_%s.pkl" % (mu, label))
+            coeff_fn = os.path.join(LOG_DIR, "lyap_param_mu=%.3f_%s.pkl" % (mu, label))
             with open(coeff_fn, "wb") as f:
                 coeff_dict = {
                     "label" : label,
                     "gammas" : Gammas,
                     "betas" : Betas,
                     "coeffs" : params,
+                    "Ks" : K_range,
                 }
                 pickle.dump(coeff_dict, f)
-            
+                
+            # Gammas = xx
+            # Betas = xx
             # make plot
             ax = axs[j,0]
             ax.plot(Gammas, params, linewidth=2, color=colors[i_mu])
@@ -140,6 +153,8 @@ if __name__ == "__main__":
             if j == nrows - 1:
                 ax.set_xlabel(r"$\gamma$", fontsize=17)
                 
+            # ax.set_yscale("log")
+                
             ax = axs[j,1]
             ax.plot(Betas, params, linewidth=2, color=colors[i_mu])
             ax.set_ylabel(r"$%s$" % label, fontsize=17)    
@@ -154,16 +169,17 @@ if __name__ == "__main__":
             if j == nrows - 1:
                 ax.set_xlabel(r"$\beta$", fontsize=17)
 
+            # ax.set_yscale("log")
+            
         fig.suptitle(r"$\mu=%.2f$" % mu, fontsize=17)
 
         # save
-        figname = "lyap_param_vs_K_mu=%.2f.png" % mu
+        figname = "lyap_param_vs_K_mu=%.3f.png" % mu
         fig_fn = os.path.join(TMP_DIR, figname)
         fig.savefig(fig_fn)
         # plt.savefig(fig_fn.replace("png", "pdf"))
         print("Figure saved at \n%s" % fig_fn)
         
-
     # save
     axs_all[2,0].legend(frameon=False)
     axs_all[2,1].legend(frameon=False)

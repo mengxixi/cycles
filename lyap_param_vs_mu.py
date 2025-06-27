@@ -92,12 +92,15 @@ if __name__ == "__main__":
         p2_list = np.zeros_like(mu_list)
 
         for i, mu in enumerate(mu_list):
-            gamma, beta = get_gamma_beta_pair(mu, L, K)
+            _, beta = get_gamma_beta_pair(mu, L, K)
+            kappa = mu/L
+            gamma = (1-beta)/((1-beta*kappa)**2)
+            gamma *= (1+3*beta*(1-kappa)-kappa*beta**2 + np.sqrt(4*beta*(2-kappa-kappa*beta)*(1+beta-2*beta*kappa)) )
             if T > 1:
                 beta = bisection_max_beta(beta, gamma, mu, L, rho, T)
             
-            value, _, P, p, _, _ = hblyap.lyapunov_heavy_ball_momentum_multistep(beta, gamma, mu, L, rho, T, return_all=True)
-            assert value == 0.
+            value, _, P, p, _, _ = hblyap.lyapunov_heavy_ball_momentum_multistep_smooth_boundary(beta, gamma, mu, L, rho, T, return_all=True)
+            assert value != inf
 
             a = P.value[0,0]
             b = P.value[2,2]
@@ -142,6 +145,8 @@ if __name__ == "__main__":
             
             if j == nrows - 1:
                 ax.set_xlabel(r"$\mu$", fontsize=17)
+            
+            # ax.set_yscale("log")
 
         fig.suptitle(r"$K=%.2f$" % K, fontsize=17)
 

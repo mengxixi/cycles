@@ -171,7 +171,7 @@ def get_nonnegativity_constraints(P, p, mu, L):
     constraints += [ - VP << matrix_combination ]
     # constraints += [ f_list[1] - fs - Vp <= vector_combination ] # break homogeneity
     constraints += [ - Vp <= vector_combination ]
-    constraints += [ cp.trace(P) + cp.sum(p) == 1 ] # break homogeneity
+    # constraints += [ cp.trace(P) + cp.sum(p) == 1 ] # break homogeneity
     constraints += [ dual >= 0 ]
     
     return constraints, dual
@@ -274,39 +274,80 @@ def lyapunov_heavy_ball_momentum_multistep_smooth_boundary(beta, gamma, mu, L, r
     constraints_m, dual_m = get_monotonicity_constraints(P, p, beta=beta, gamma=gamma, mu=mu, L=L, rho=rho, lyapunov_steps=lyapunov_steps)
     constraints = constraints_n + constraints_m
     
-    constraints += [ P[0,0] ==  P[1,1] ]
-    constraints += [ P[0,0] == -P[0,1] ]
-    constraints += [ P[0,2] == -P[1,2] ]
-    constraints += [ P[0,3] == -P[1,3] ]
-    
-    constraints += [ P[0,0] ==  P[1,1] ]
-    constraints += [ P[0,0] == -P[0,1] ]
-    constraints += [ P[0,2] == -P[1,2] ]
-    constraints += [ P[0,3] == -P[1,3] ]
-    
-    constraints += [ P[1,2] >= 0 ]
-    constraints += [ P[1,3] >= 0 ]
-    constraints += [ P[2,3] >= 0 ]
-    constraints += [ P[2,2] >= 0 ]
-    constraints += [ P[3,3] >= 0 ]
-    
-    constraints += [ p[0] >= 0 ]
-    constraints += [ p[1] >= 0 ]
-        
-    # 0 if there exists a Lyapunov
-    # inf otherwise
-    prob = cp.Problem(objective=cp.Minimize(0), constraints=constraints)
-    try:
-        value = prob.solve(solver="MOSEK", 
-                        #    verbose=True, 
-                        #    accept_unknown=False,
-                        # #    mosek_params={}
-                           )
+    constraints += [ P[2,:] == 0 ] # g_{k-1}
+    constraints += [ P[:,2] == 0 ]
+    constraints += [ p[0] == 0]
 
-    except cp.error.SolverError as e:
-        print(e)
-        print("Marking problem as infeasible...")
-        value = inf 
+    constraints += [ P[0,0] == P[1,1] ]
+    constraints += [ P[0,0] == -P[0,1] ]
+    constraints += [ P[0,3] == -P[1,3] ]
+    
+    constraints += [ dual_m[4] == p[1]/(1-mu) ]
+    
+    constraints += [ p[1] == 1 ]
+
+    # try logdet objective
+    N = P.shape[0]
+    Dk = np.eye(2*N)
+    
+    log_det_iterations = 1
+    log_det_delta = 10 #0000
+    for _ in range(log_det_iterations):
+        Y = cp.Variable((N,N), symmetric=True)
+        Z = cp.Variable((N,N), symmetric=True)
+        D = cp.bmat([
+            [Y, np.zeros((N, N))],
+            [np.zeros((N, N)), Z],
+        ])
+        
+        Inv = np.linalg.inv(Dk + log_det_delta*np.eye(2*N))
+        obj_logdet = cp.Minimize(cp.trace(Inv@D))
+        
+        M = cp.bmat([
+            [Y, P],
+            [P.T, Z]
+        ])
+        
+        constraints_new = constraints.copy()
+        constraints_new += [ M >> 0 ]
+        
+        prob = cp.Problem(objective=obj_logdet, constraints=constraints_new)
+        try:
+            value = prob.solve(solver="MOSEK")
+            if value < inf:
+                Dk = np.bmat([
+                    [Y.value, np.zeros((N, N))],
+                    [np.zeros((N, N)), Z.value],
+                ])
+        except cp.error.SolverError as e:
+            print(e)
+            # break out and ignore the heuristic
+            obj = cp.Minimize(0)
+            prob = cp.Problem(objective=obj, constraints=constraints)
+            try:
+                value = prob.solve(solver="MOSEK")
+                break
+            except cp.error.SolverError as e:
+                print(e)
+                print("Marking problem as infeasible...")
+                value = inf
+                break
+
+        
+    # # 0 if there exists a Lyapunov
+    # # inf otherwise
+    # prob = cp.Problem(objective=cp.Minimize(0), constraints=constraints)
+    # try:
+    #     value = prob.solve(solver="MOSEK", 
+    #                     #    verbose=True, 
+    #                     #    accept_unknown=False,
+    #                     # #    mosek_params={}
+    #                        )
+
+    # except cp.error.SolverError as e:
+    #     print(e)
+    #     print("Marking problem as infeasible...")
+    #     value = inf 
 
     if return_all:
         return value, prob, P, p, dual_n, dual_m
@@ -329,30 +370,76 @@ def lyapunov_heavy_ball_momentum_multistep(beta, gamma, mu, L, rho, lyapunov_ste
     constraints += [ P[0,2] == -P[1,2] ]
     constraints += [ P[0,3] == -P[1,3] ]
     
-    constraints += [ P[1,2] >= 0 ]
-    constraints += [ P[1,3] >= 0 ]
-    constraints += [ P[2,3] >= 0 ]
-    constraints += [ P[2,2] >= 0 ]
-    constraints += [ P[3,3] >= 0 ]
+    # constraints += [ P[1,2] >= 0 ]
+    # constraints += [ P[1,3] >= 0 ]
+    # constraints += [ P[2,3] >= 0 ]
+    # constraints += [ P[2,2] >= 0 ]
+    # constraints += [ P[3,3] >= 0 ]
     
-    constraints += [ p[0] >= 0 ]
-    constraints += [ p[1] >= 0 ]
+    # constraints += [ p[0] >= 0 ]
+    # constraints += [ p[1] >= 0 ]
             
+    # try logdet objective
+    N = P.shape[0]
+    Dk = np.eye(2*N)
+    
+    log_det_iterations = 1
+    log_det_delta = 10 #0000
+    for _ in range(log_det_iterations):
+        Y = cp.Variable((N,N), symmetric=True)
+        Z = cp.Variable((N,N), symmetric=True)
+        D = cp.bmat([
+            [Y, np.zeros((N, N))],
+            [np.zeros((N, N)), Z],
+        ])
         
-    # 0 if there exists a Lyapunov
-    # inf otherwise
-    prob = cp.Problem(objective=cp.Minimize(0), constraints=constraints)
-    try:
-        value = prob.solve(solver="MOSEK", 
-                        #    verbose=True, 
-                        #    accept_unknown=False,
-                        # #    mosek_params={}
-                           )
+        Inv = np.linalg.inv(Dk + log_det_delta*np.eye(2*N))
+        obj_logdet = cp.Minimize(cp.trace(Inv@D))
+        
+        M = cp.bmat([
+            [Y, P],
+            [P.T, Z]
+        ])
+        
+        constraints_new = constraints.copy()
+        constraints_new += [ M >> 0 ]
+        
+        prob = cp.Problem(objective=obj_logdet, constraints=constraints_new)
+        try:
+            value = prob.solve(solver="MOSEK")
+            if value < inf:
+                Dk = np.bmat([
+                    [Y.value, np.zeros((N, N))],
+                    [np.zeros((N, N)), Z.value],
+                ])
+        except cp.error.SolverError as e:
+            print(e)
+            # break out and ignore the heuristic
+            obj = cp.Minimize(0)
+            prob = cp.Problem(objective=obj, constraints=constraints)
+            try:
+                value = prob.solve(solver="MOSEK")
+                break
+            except cp.error.SolverError as e:
+                print(e)
+                print("Marking problem as infeasible...")
+                value = inf
+                break
+    
+    # # 0 if there exists a Lyapunov
+    # # inf otherwise
+    # prob = cp.Problem(objective=cp.Minimize(0), constraints=constraints)
+    # try:
+    #     value = prob.solve(solver="MOSEK", 
+    #                     #    verbose=True, 
+    #                     #    accept_unknown=False,
+    #                     # #    mosek_params={}
+    #                        )
 
-    except cp.error.SolverError as e:
-        print(e)
-        print("Marking problem as infeasible...")
-        value = inf 
+    # except cp.error.SolverError as e:
+    #     print(e)
+    #     print("Marking problem as infeasible...")
+    #     value = inf 
 
     if return_all:
         return value, prob, P, p, dual_n, dual_m
