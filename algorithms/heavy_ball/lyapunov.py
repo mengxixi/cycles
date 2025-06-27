@@ -6,6 +6,15 @@ import cvxpy as cp
 from tools.interpolation_conditions import interpolation_combination
 
 
+def inner_product(u, v):
+    matrix = u.reshape(-1, 1) * v.reshape(1, -1)
+    return (matrix + matrix.T) / 2
+
+
+def square(u):
+    return inner_product(u, u)
+
+
 def lyapunov_heavy_ball_momentum(beta, gamma, mu, L, rho):
 
     # Initialize
@@ -217,6 +226,68 @@ def get_monotonicity_constraints(P, p, beta, gamma, mu, L, rho, lyapunov_steps=1
     return constraints, dual
 
 
+def get_monotonicity_constraints_sparse(P, p, beta, gamma, mu, L, rho, lyapunov_steps=1):
+    K = 2
+    
+    # Initialize
+    x_list, g_list, f_list, xs, gs, fs = initialize_lyapunov_heavy_ball_momentum_multistep(K, T=lyapunov_steps)
+
+    # Run algorithm
+    for t in range(1, lyapunov_steps + 1):
+        xprev = x_list[t-1]
+        xcurr = x_list[t]
+        gcurr = g_list[t]
+        
+        xnext = xcurr - gamma * gcurr + beta * (xcurr - xprev)
+        x_list += [xnext]
+
+
+    Vp = p.T @ np.vstack(f_list[:2])
+    Vp_plus = p.T @ np.vstack(f_list[-2:])
+    
+    x = np.vstack(x_list[:2])
+    g = np.vstack(g_list[:2])
+    VP = np.vstack((x, g)).T @ P @ np.vstack((x, g))
+    
+    x = np.vstack(x_list[-2:])
+    g = np.vstack(g_list[-2:])
+    VP_plus = np.vstack((x, g)).T @ P @ np.vstack((x, g))
+
+    # Build constraints
+    # list_of_points = list(zip(x_list, g_list, f_list))
+    # list_of_points += [(xs, gs, fs)]
+    # matrix_combination, vector_combination, dual = interpolation_combination(list_of_points, mu, L, function_class="smooth strongly convex")
+    
+    xi, gi, fi = x_list[-2], g_list[-2], f_list[-2]
+    xj, gj, fj = x_list[-1], g_list[-1], f_list[-1]
+
+    G = inner_product(gj, xi - xj) + 1 / (2 * L) * square(gi - gj) + mu / (2 * (1 - mu / L)) * square(
+        xi - xj - 1 / L * gi + 1 / L * gj)
+    
+    M = np.array([
+        [-mu*L, mu*L, mu, -L],
+        [mu*L, -mu*L, -mu, L],
+        [mu, -mu, -1, 1],
+        [-L, L, 1, -1]])
+    
+    x = np.vstack([xi, xj])
+    g = np.vstack([gi, gj])
+
+    G_ = -0.5 * np.vstack((x, g)).T @ M @ np.vstack((x, g))
+    F_ = (fj - fi)*(L-mu)
+    
+    dual = cp.Variable((1,))
+    matrix_combination = dual*G_
+    vector_combination = dual*F_
+    
+    constraints = []
+    constraints += [ VP_plus - rho * VP << matrix_combination ]
+    constraints += [ Vp_plus - rho * Vp <= vector_combination ]
+    constraints += [ dual >= 0 ]
+
+    return constraints, dual
+
+
 def lyapunov_heavy_ball_momentum_multistep_fixed(beta, gamma, mu, L, rho, lyapunov_steps=1, return_all=False):   
     c = beta**2 / gamma - mu*beta/2
     b = (2 - gamma*L) / (2*gamma)
@@ -282,7 +353,13 @@ def lyapunov_heavy_ball_momentum_multistep_smooth_boundary(beta, gamma, mu, L, r
     constraints += [ P[0,0] == -P[0,1] ]
     constraints += [ P[0,3] == -P[1,3] ]
     
-    constraints += [ dual_m[4] == p[1]/(1-mu) ]
+    constraints += [ dual_m[4] == p[1]/(L-mu) ]
+    
+    dual_n_zeros = np.setdiff1d(np.arange(6), [3])
+    constraints += [ dual_n[dual_n_zeros] == 0 ]
+    
+    dual_m_zeros = np.setdiff1d(np.arange(12), [4])
+    constraints += [ dual_m[dual_m_zeros] == 0 ]
     
     constraints += [ p[1] == 1 ]
 

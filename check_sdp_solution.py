@@ -104,40 +104,40 @@ if __name__ == "__main__":
     
     print("test",(1-np.sqrt(3*mu))*beta)
         
-    # print("dual variables corresponding to NONNEGATIVITY constraints")
-    # print(dual_n.value)
+    print("dual variables corresponding to NONNEGATIVITY constraints")
+    print(dual_n.value)
     
-    # print("dual variables corresponding to MONOTONICITY constraints")
-    # print(dual_m.value)
+    print("dual variables corresponding to MONOTONICITY constraints")
+    print(dual_m.value)
     
     # lambdakk1 = dual_m.value[4]
     # print("lambda(k, k+1)", lambdakk1)
     # print("d/(1-mu)      ", d/(1-mu))
     
-    mm = lyapunov_steps+3
-    M = np.zeros((mm, mm))
-    row_idx, col_idx = np.where(~np.eye(lyapunov_steps+3, dtype=bool))
-    M[row_idx, col_idx] = dual_m.value
+    # mm = lyapunov_steps+3
+    # M = np.zeros((mm, mm))
+    # row_idx, col_idx = np.where(~np.eye(lyapunov_steps+3, dtype=bool))
+    # M[row_idx, col_idx] = dual_m.value
     
-    fig, ax = plt.subplots(figsize=(4, 4), layout="constrained")
-    ax.imshow(M)
+    # fig, ax = plt.subplots(figsize=(4, 4), layout="constrained")
+    # ax.imshow(M)
     
-    headers = [r"$k-1$", r"$k$"]
-    for t in range(1,lyapunov_steps+1):
-        headers += [r"$k+%d$"%t]
-    headers += [r"*"]
+    # headers = [r"$k-1$", r"$k$"]
+    # for t in range(1,lyapunov_steps+1):
+    #     headers += [r"$k+%d$"%t]
+    # headers += [r"*"]
     
-    ax.set_xticks(np.arange(len(headers))[::2])
-    ax.set_yticks(np.arange(len(headers))[::2])
-    ax.set_xticklabels(headers[::2], rotation=45)
-    ax.set_yticklabels(headers[::2])
-    ax.tick_params(top=True, labeltop=True, bottom=False, labelbottom=False)
+    # ax.set_xticks(np.arange(len(headers))[::2])
+    # ax.set_yticks(np.arange(len(headers))[::2])
+    # ax.set_xticklabels(headers[::2], rotation=45)
+    # ax.set_yticklabels(headers[::2])
+    # ax.tick_params(top=True, labeltop=True, bottom=False, labelbottom=False)
 
-    ax.set_title(r"$T=%d, \, \mu=%.2f$" % (lyapunov_steps, mu), fontsize=17)
+    # ax.set_title(r"$T=%d, \, \mu=%.2f$" % (lyapunov_steps, mu), fontsize=17)
 
-    fig_fn = "tmp/dual_m_mu=%.2f_T=%d_K=%.2f.png" % (mu, lyapunov_steps, K)
-    plt.savefig(fig_fn)
-    print("Figure saved at \n%s" % fig_fn)
+    # fig_fn = "tmp/dual_m_mu=%.2f_T=%d_K=%.2f.png" % (mu, lyapunov_steps, K)
+    # plt.savefig(fig_fn)
+    # print("Figure saved at \n%s" % fig_fn)
 
     # np.set_printoptions(precision=2)
     # print("dual variables corresponding to MONOTONICITY constraints")
