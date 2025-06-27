@@ -15,6 +15,32 @@ def square(u):
     return inner_product(u, u)
 
 
+def interpolation_single(pi, pj, mu, L):
+    xi, gi, fi = pi
+    xj, gj, fj = pj
+    
+    G = inner_product(gj, xi - xj) + 1 / (2 * L) * square(gi - gj) + mu / (2 * (1 - mu / L)) * square(
+        xi - xj - 1 / L * gi + 1 / L * gj)
+    
+    M = np.array([
+        [-mu*L, mu*L, mu, -L],
+        [mu*L, -mu*L, -mu, L],
+        [mu, -mu, -1, 1],
+        [-L, L, 1, -1]])
+    
+    x = np.vstack([xi, xj])
+    g = np.vstack([gi, gj])
+
+    G_ = -0.5 * np.vstack((x, g)).T @ M @ np.vstack((x, g))
+    F_ = (fj - fi)*(L-mu)
+    
+    dual = cp.Variable((1,))
+    matrix_combination = dual*G_
+    vector_combination = dual*F_
+    
+    return matrix_combination, vector_combination, dual
+
+
 def lyapunov_heavy_ball_momentum(beta, gamma, mu, L, rho):
 
     # Initialize
@@ -171,10 +197,14 @@ def get_nonnegativity_constraints(P, p, mu, L):
     g = np.vstack(g_list)
     VP = np.vstack((x, g)).T @ P @ np.vstack((x, g))
     
-    # Build constraints
-    list_of_points = list(zip(x_list, g_list, f_list))
-    list_of_points += [(xs, gs, fs)]
-    matrix_combination, vector_combination, dual = interpolation_combination(list_of_points, mu, L, function_class="smooth strongly convex")
+    # # Build constraints
+    # list_of_points = list(zip(x_list, g_list, f_list))
+    # list_of_points += [(xs, gs, fs)]
+    # matrix_combination, vector_combination, dual = interpolation_combination(list_of_points, mu, L, function_class="smooth strongly convex")
+    
+    pk = (x_list[-1], g_list[-1], f_list[-1])
+    ps = (xs, gs, fs)
+    matrix_combination, vector_combination, dual = interpolation_single(pk, ps, mu, L)
     
     constraints = []
     constraints += [ - VP << matrix_combination ]
@@ -214,9 +244,13 @@ def get_monotonicity_constraints(P, p, beta, gamma, mu, L, rho, lyapunov_steps=1
     VP_plus = np.vstack((x, g)).T @ P @ np.vstack((x, g))
 
     # Build constraints
-    list_of_points = list(zip(x_list, g_list, f_list))
-    list_of_points += [(xs, gs, fs)]
-    matrix_combination, vector_combination, dual = interpolation_combination(list_of_points, mu, L, function_class="smooth strongly convex")
+    # list_of_points = list(zip(x_list, g_list, f_list))
+    # list_of_points += [(xs, gs, fs)]
+    # matrix_combination, vector_combination, dual = interpolation_combination(list_of_points, mu, L, function_class="smooth strongly convex")
+    
+    pk = (x_list[-2], g_list[-2], f_list[-2])
+    pkk = (x_list[-1], g_list[-1], f_list[-1])
+    matrix_combination, vector_combination, dual = interpolation_single(pk, pkk, mu, L)
 
     constraints = []
     constraints += [ VP_plus - rho * VP << matrix_combination ]
@@ -260,25 +294,6 @@ def get_monotonicity_constraints_sparse(P, p, beta, gamma, mu, L, rho, lyapunov_
     
     xi, gi, fi = x_list[-2], g_list[-2], f_list[-2]
     xj, gj, fj = x_list[-1], g_list[-1], f_list[-1]
-
-    G = inner_product(gj, xi - xj) + 1 / (2 * L) * square(gi - gj) + mu / (2 * (1 - mu / L)) * square(
-        xi - xj - 1 / L * gi + 1 / L * gj)
-    
-    M = np.array([
-        [-mu*L, mu*L, mu, -L],
-        [mu*L, -mu*L, -mu, L],
-        [mu, -mu, -1, 1],
-        [-L, L, 1, -1]])
-    
-    x = np.vstack([xi, xj])
-    g = np.vstack([gi, gj])
-
-    G_ = -0.5 * np.vstack((x, g)).T @ M @ np.vstack((x, g))
-    F_ = (fj - fi)*(L-mu)
-    
-    dual = cp.Variable((1,))
-    matrix_combination = dual*G_
-    vector_combination = dual*F_
     
     constraints = []
     constraints += [ VP_plus - rho * VP << matrix_combination ]
@@ -334,7 +349,6 @@ def lyapunov_heavy_ball_momentum_multistep_fixed(beta, gamma, mu, L, rho, lyapun
         return value
     
 
-
 def lyapunov_heavy_ball_momentum_multistep_smooth_boundary(beta, gamma, mu, L, rho, lyapunov_steps=1, return_all=False):
     # Define SDP variables
     P = cp.Variable((4, 4), symmetric=True)
@@ -353,78 +367,80 @@ def lyapunov_heavy_ball_momentum_multistep_smooth_boundary(beta, gamma, mu, L, r
     constraints += [ P[0,0] == -P[0,1] ]
     constraints += [ P[0,3] == -P[1,3] ]
     
-    constraints += [ dual_m[4] == p[1]/(L-mu) ]
+    constraints += [ dual_m[0] == p[1]/(L-mu) ]
     
-    dual_n_zeros = np.setdiff1d(np.arange(6), [3])
-    constraints += [ dual_n[dual_n_zeros] == 0 ]
+    # constraints += [ dual_m[4] == p[1]/(L-mu) ]
     
-    dual_m_zeros = np.setdiff1d(np.arange(12), [4])
-    constraints += [ dual_m[dual_m_zeros] == 0 ]
+    # dual_n_zeros = np.setdiff1d(np.arange(6), [3])
+    # constraints += [ dual_n[dual_n_zeros] == 0 ]
+    
+    # dual_m_zeros = np.setdiff1d(np.arange(12), [4])
+    # constraints += [ dual_m[dual_m_zeros] == 0 ]
     
     constraints += [ p[1] == 1 ]
 
-    # try logdet objective
-    N = P.shape[0]
-    Dk = np.eye(2*N)
+    # # try logdet objective
+    # N = P.shape[0]
+    # Dk = np.eye(2*N)
     
-    log_det_iterations = 1
-    log_det_delta = 10 #0000
-    for _ in range(log_det_iterations):
-        Y = cp.Variable((N,N), symmetric=True)
-        Z = cp.Variable((N,N), symmetric=True)
-        D = cp.bmat([
-            [Y, np.zeros((N, N))],
-            [np.zeros((N, N)), Z],
-        ])
+    # log_det_iterations = 1
+    # log_det_delta = 10 #0000
+    # for _ in range(log_det_iterations):
+    #     Y = cp.Variable((N,N), symmetric=True)
+    #     Z = cp.Variable((N,N), symmetric=True)
+    #     D = cp.bmat([
+    #         [Y, np.zeros((N, N))],
+    #         [np.zeros((N, N)), Z],
+    #     ])
         
-        Inv = np.linalg.inv(Dk + log_det_delta*np.eye(2*N))
-        obj_logdet = cp.Minimize(cp.trace(Inv@D))
+    #     Inv = np.linalg.inv(Dk + log_det_delta*np.eye(2*N))
+    #     obj_logdet = cp.Minimize(cp.trace(Inv@D))
         
-        M = cp.bmat([
-            [Y, P],
-            [P.T, Z]
-        ])
+    #     M = cp.bmat([
+    #         [Y, P],
+    #         [P.T, Z]
+    #     ])
         
-        constraints_new = constraints.copy()
-        constraints_new += [ M >> 0 ]
+    #     constraints_new = constraints.copy()
+    #     constraints_new += [ M >> 0 ]
         
-        prob = cp.Problem(objective=obj_logdet, constraints=constraints_new)
-        try:
-            value = prob.solve(solver="MOSEK")
-            if value < inf:
-                Dk = np.bmat([
-                    [Y.value, np.zeros((N, N))],
-                    [np.zeros((N, N)), Z.value],
-                ])
-        except cp.error.SolverError as e:
-            print(e)
-            # break out and ignore the heuristic
-            obj = cp.Minimize(0)
-            prob = cp.Problem(objective=obj, constraints=constraints)
-            try:
-                value = prob.solve(solver="MOSEK")
-                break
-            except cp.error.SolverError as e:
-                print(e)
-                print("Marking problem as infeasible...")
-                value = inf
-                break
+    #     prob = cp.Problem(objective=obj_logdet, constraints=constraints_new)
+    #     try:
+    #         value = prob.solve(solver="MOSEK")
+    #         if value < inf:
+    #             Dk = np.bmat([
+    #                 [Y.value, np.zeros((N, N))],
+    #                 [np.zeros((N, N)), Z.value],
+    #             ])
+    #     except cp.error.SolverError as e:
+    #         print(e)
+    #         # break out and ignore the heuristic
+    #         obj = cp.Minimize(0)
+    #         prob = cp.Problem(objective=obj, constraints=constraints)
+    #         try:
+    #             value = prob.solve(solver="MOSEK")
+    #             break
+    #         except cp.error.SolverError as e:
+    #             print(e)
+    #             print("Marking problem as infeasible...")
+    #             value = inf
+    #             break
 
         
-    # # 0 if there exists a Lyapunov
-    # # inf otherwise
-    # prob = cp.Problem(objective=cp.Minimize(0), constraints=constraints)
-    # try:
-    #     value = prob.solve(solver="MOSEK", 
-    #                     #    verbose=True, 
-    #                     #    accept_unknown=False,
-    #                     # #    mosek_params={}
-    #                        )
+    # 0 if there exists a Lyapunov
+    # inf otherwise
+    prob = cp.Problem(objective=cp.Minimize(0), constraints=constraints)
+    try:
+        value = prob.solve(solver="MOSEK", 
+                        #    verbose=True, 
+                        #    accept_unknown=False,
+                        # #    mosek_params={}
+                           )
 
-    # except cp.error.SolverError as e:
-    #     print(e)
-    #     print("Marking problem as infeasible...")
-    #     value = inf 
+    except cp.error.SolverError as e:
+        print(e)
+        print("Marking problem as infeasible...")
+        value = inf 
 
     if return_all:
         return value, prob, P, p, dual_n, dual_m
