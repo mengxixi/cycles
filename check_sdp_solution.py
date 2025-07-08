@@ -81,7 +81,7 @@ if __name__ == "__main__":
     print("beta:                   ", beta)
     print("max beta for T=%d steps: " % lyapunov_steps, max_beta)
     
-    value, sdp_prob, P, p, dual_n, dual_m = hblyap.lyapunov_heavy_ball_momentum_multistep_smooth_boundary(max_beta, gamma, mu, L, rho, lyapunov_steps, return_all=True)
+    value, sdp_prob, P, p, dual_n, dual_m, VP_L_m, VP_R_m, Vp_L_m, Vp_R_m = hblyap.lyapunov_heavy_ball_momentum_multistep_smooth_boundary(max_beta, gamma, mu, L, rho, lyapunov_steps, return_all=True)
     print("\nOptimal value", value, "\n")
 
     Pmat = P.value
@@ -101,14 +101,87 @@ if __name__ == "__main__":
     print("b       ", b)
     print("c       ", c)
     print("d       ", d)
-    
-    print("test",(1-np.sqrt(3*mu))*beta)
-        
+            
     print("dual variables corresponding to NONNEGATIVITY constraints")
     print(dual_n.value)
-    
+        
     print("dual variables corresponding to MONOTONICITY constraints")
     print(dual_m.value)
+    
+    # # look at residuals
+    # matrix_combination_nonneg = sdp_prob.constraints[0]
+    # vector_combination_nonneg = sdp_prob.constraints[1]
+    # matrix_combination_monoto = sdp_prob.constraints[3]
+    # vector_combination_monoto = sdp_prob.constraints[4]
+    
+    # print(VP_L_m)
+    Residual_m = (VP_L_m - VP_R_m).value
+    print("Rank of Residual_m: ", np.sum(np.linalg.svdvals(Residual_m)>1e-6))
+    
+    np.set_printoptions(5)
+    print(Residual_m)
+    
+    R15 = Residual_m[0,4]
+    R55 = Residual_m[4,4]
+    R11 = Residual_m[0,0]
+    R44 = Residual_m[3,3]
+    R45 = Residual_m[3,4]
+    
+    eigvals, eigvecs = np.linalg.eigh(-Residual_m)
+    # print(eigvals)
+    # print(eigvecs)
+    
+    eigv = eigvals[-1]
+    eigvec = eigvecs[:,-1]
+    v1 = eigvec[0]
+    v4 = eigvec[3]
+    v5 = eigvec[4]
+    
+    print(v1, v4, v5, np.sqrt(eigv))
+    
+    print("v4v5")
+    print(v4*v5*eigv*(-2))
+    print( (1+(2*b-1)*L*gamma-2*b*gamma*mu)/(L-mu) )
+    
+    print("v4v4")
+    print(v4*v4*eigv*(-1))
+    print( (-2+beta+2*a*gamma**2*(L-mu)+2*gamma*mu-gamma**2*mu*L) /(2*(L-mu)) )
+    
+    print("v5v5")
+    print(v5*v5*eigv*(-1))
+    print(-beta/(2*(L-mu)))
+    
+    print("does THIS equal to 1")
+    print(((-2*a*(-1 + beta**2)*(L - mu) + L*beta**2*mu)*(1 + (-1 + 2*b)*L*gamma - 2*b*gamma*mu))/(beta*((-1 + 2*b)*L - 2*b*mu)*(2*b*(L - mu) + beta*(-1 + L*gamma)*mu + 2*a*beta*gamma*(-L + mu))))
+    
+    
+    # print("does it equal to 1")
+    # equalto1 = -( beta*(beta-2+2*a*(L-mu)*gamma**2 + 2*gamma*mu - L*mu*gamma**2) )/( (1+(2*b-1)*L*gamma - 2*b*gamma*mu)**2 )
+    # print(equalto1)
+    
+    # print(eigv*v5**2)
+    # print(-(L-mu-1)*2*(L-mu)**2 )
+    # print(np.linalg.cholesky(Residual_m_principal))
+    
+    
+    # print(sdp_prob.constraints[3].dual_value)
+    
+    # print(np.trace(Residual_m@sdp_prob.constraints[3].dual_value))
+    # print(R45, -(b*gamma + (1-gamma)/(2*(L-mu))))
+    # print(R15, beta*(b - L/(2*(L-mu))))
+    # print(R45, b*gamma - (gamma*L-1)/(2*(L-mu)))
+
+    # print(beta, (1-c*2*(L-mu)))
+    # print(beta*mu, (1-b*2*(L-mu)/L)*beta)
+    # print(c, 1/(2*(L-mu))- R55)
+    # print(b, L/(2*(L-mu)) - R15/beta)
+    # print(a, 1/(beta**2-1)*((beta**2)*mu*L/(2*(L-mu)) - R11))
+        
+    # print("Singular values of Residual_m")
+    # print(np.linalg.svdvals(Residual_m))
+    
+    # residual_m = (Vp_R_m - Vp_L_m).value
+    # print(residual_m)
     
     # lambdakk1 = dual_m.value[4]
     # print("lambda(k, k+1)", lambdakk1)

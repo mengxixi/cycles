@@ -58,7 +58,7 @@ if __name__ == "__main__":
 
     # fix mu
     mu_list = args.mu_list
-    nrows = 8
+    nrows = 9
     ncols = 2
     fig_all, axs_all = plt.subplots(nrows=nrows, ncols=ncols, 
                             figsize=(2.5*ncols,2.5*nrows),
@@ -70,7 +70,7 @@ if __name__ == "__main__":
         # _, beta_min = get_gamma_beta_pair(mu, L, K=3)
         # beta_min = ( (2-kappa) - np.sqrt((1-kappa)*(5-kappa)) ) / (2*kappa - 1)
         delta = 1-1e-1
-        K_range = np.linspace(3, 10, 100)
+        K_range = np.linspace(2, 10, 100)
         Betas = [get_gamma_beta_pair(mu, L, K=k)[1] for k in K_range]
         # Gammas = [get_gamma_beta_pair(mu, L, K=k)[0] for k in K_range]
         # Betas = np.linspace(beta_min, 1, num=100)
@@ -88,21 +88,23 @@ if __name__ == "__main__":
         f_list = np.full_like(Betas, np.nan)
         p1_list = np.full_like(Betas, np.nan)
         p2_list = np.full_like(Betas, np.nan)
+        dual_n_list = np.full_like(Betas, np.nan)
         
         for i, (gamma, beta) in enumerate(zip(Gammas, Betas)):            
-            value, _, P, p, _, _ = hblyap.lyapunov_heavy_ball_momentum_multistep_smooth_boundary(beta, gamma, mu, L, rho, T, return_all=True)
+            value, _, P, p, dual_n, _,_,_,_,_ = hblyap.lyapunov_heavy_ball_momentum_multistep_smooth_boundary(beta, gamma, mu, L, rho, T, return_all=True)
             if value == inf:
                 print("Not verified for mu=%f, skipping.." % mu)
                 continue
 
-            a = P.value[0,0]
-            b = P.value[2,2]
-            c = P.value[3,3]
-            d = P.value[1,2]
-            e = P.value[0,3]
+            a = P.value[0,0]*2*(L-mu)
+            b = P.value[0,3]*2*(L-mu)
+            c = (1-beta)/(2*(L-mu))
+            d = P.value[0,2]
+            e = P.value[1,2]
             f = P.value[2,3]
             p1 = p.value[0]
             p2 = p.value[1]
+            dual_n = dual_n.value[0]*2*(L-mu)
             
             a_list[i] = a
             b_list[i] = b
@@ -112,14 +114,15 @@ if __name__ == "__main__":
             f_list[i] = f
             p1_list[i] = p1
             p2_list[i] = p2
+            dual_n_list[i] = dual_n
 
         # make plots
         fig, axs = plt.subplots(nrows=nrows, ncols=ncols, 
                                 figsize=(2.5*ncols,2.5*nrows),
                                 constrained_layout=True)
 
-        coeff_lists = [a_list, b_list, c_list, d_list, e_list, f_list, p1_list, p2_list]
-        label_list = ["a", "b", "c", "d", "e", "f", "p1", "p2"]
+        coeff_lists = [a_list, b_list, c_list, d_list, e_list, f_list, p1_list, p2_list, dual_n_list]
+        label_list = ["a", "b", "c", "d", "e", "f", "p1", "p2", "dual_n"]
         for j, (params, label) in enumerate(zip(coeff_lists, label_list)):
             # xx = np.cos(2*np.pi/K_range)
             xx = K_range
@@ -163,6 +166,13 @@ if __name__ == "__main__":
                 ax.set_xlabel(r"$\beta$", fontsize=17)
                 
             ax = axs_all[j, 1]
+            if label == "e":
+                # ax.set_ylim(0.0, 1.0)
+                # ax.set_xlim(0.0, 1.0)
+                # coeffs = np.polyfit(Betas, params, 1, rcond=1e-32)
+                # ax.plot(Betas, coeffs[0]*np.array(Betas) + coeffs[1], linewidth=2, color=colors[i_mu], linestyle="--")
+                coeffs = np.polyfit(Betas, params, 2, rcond=1e-32)
+                ax.plot(Betas, coeffs[0]*np.array(Betas)**2 + coeffs[1]*np.array(Betas) + coeffs[2], linewidth=2, color=colors[i_mu], linestyle="--")
             ax.plot(Betas, params, linewidth=2, color=colors[i_mu], label=r"$\mu=%.2f$" % mu)
             ax.set_ylabel(r"$%s$" % label, fontsize=17)    
             

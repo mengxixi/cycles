@@ -21,7 +21,7 @@ def interpolation_single(pi, pj, mu, L):
     
     G = inner_product(gj, xi - xj) + 1 / (2 * L) * square(gi - gj) + mu / (2 * (1 - mu / L)) * square(
         xi - xj - 1 / L * gi + 1 / L * gj)
-    
+        
     M = np.array([
         [-mu*L, mu*L, mu, -L],
         [mu*L, -mu*L, -mu, L],
@@ -37,7 +37,7 @@ def interpolation_single(pi, pj, mu, L):
     dual = cp.Variable((1,))
     matrix_combination = dual*G_
     vector_combination = dual*F_
-    
+        
     return matrix_combination, vector_combination, dual
 
 
@@ -256,8 +256,13 @@ def get_monotonicity_constraints(P, p, beta, gamma, mu, L, rho, lyapunov_steps=1
     constraints += [ VP_plus - rho * VP << matrix_combination ]
     constraints += [ Vp_plus - rho * Vp <= vector_combination ]
     constraints += [ dual >= 0 ]
-
-    return constraints, dual
+    
+    VP_L = VP_plus - rho * VP
+    VP_R = matrix_combination
+    Vp_L = Vp_plus - rho * Vp
+    Vp_R = vector_combination
+    
+    return constraints, dual, VP_L, VP_R, Vp_L, Vp_R
 
 
 def get_monotonicity_constraints_sparse(P, p, beta, gamma, mu, L, rho, lyapunov_steps=1):
@@ -356,19 +361,21 @@ def lyapunov_heavy_ball_momentum_multistep_smooth_boundary(beta, gamma, mu, L, r
     
     # Get constraints
     constraints_n, dual_n = get_nonnegativity_constraints(P, p, mu=mu, L=L)
-    constraints_m, dual_m = get_monotonicity_constraints(P, p, beta=beta, gamma=gamma, mu=mu, L=L, rho=rho, lyapunov_steps=lyapunov_steps)
+    constraints_m, dual_m, VP_L_m, VP_R_m, Vp_L_m, Vp_R_m = get_monotonicity_constraints(P, p, beta=beta, gamma=gamma, mu=mu, L=L, rho=rho, lyapunov_steps=lyapunov_steps)
     constraints = constraints_n + constraints_m
     
     constraints += [ P[2,:] == 0 ] # g_{k-1}
     constraints += [ P[:,2] == 0 ]
     constraints += [ p[0] == 0]
+    constraints += [ p[1] == 1 ]
 
     constraints += [ P[0,0] == P[1,1] ]
     constraints += [ P[0,0] == -P[0,1] ]
     constraints += [ P[0,3] == -P[1,3] ]
+    constraints += [ P[3,3] == (1-beta)/(2*(L-mu))]
     
     constraints += [ dual_m[0] == p[1]/(L-mu) ]
-    
+        
     # constraints += [ dual_m[4] == p[1]/(L-mu) ]
     
     # dual_n_zeros = np.setdiff1d(np.arange(6), [3])
@@ -376,8 +383,6 @@ def lyapunov_heavy_ball_momentum_multistep_smooth_boundary(beta, gamma, mu, L, r
     
     # dual_m_zeros = np.setdiff1d(np.arange(12), [4])
     # constraints += [ dual_m[dual_m_zeros] == 0 ]
-    
-    constraints += [ p[1] == 1 ]
 
     # # try logdet objective
     # N = P.shape[0]
@@ -443,7 +448,7 @@ def lyapunov_heavy_ball_momentum_multistep_smooth_boundary(beta, gamma, mu, L, r
         value = inf 
 
     if return_all:
-        return value, prob, P, p, dual_n, dual_m
+        return value, prob, P, p, dual_n, dual_m, VP_L_m, VP_R_m, Vp_L_m, Vp_R_m
     else:
         return value
 
