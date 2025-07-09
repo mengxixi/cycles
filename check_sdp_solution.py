@@ -81,7 +81,7 @@ if __name__ == "__main__":
     print("beta:                   ", beta)
     print("max beta for T=%d steps: " % lyapunov_steps, max_beta)
     
-    value, sdp_prob, P, p, dual_n, dual_m, VP_L_m, VP_R_m, Vp_L_m, Vp_R_m = hblyap.lyapunov_heavy_ball_momentum_multistep_smooth_boundary(max_beta, gamma, mu, L, rho, lyapunov_steps, return_all=True)
+    value, sdp_prob, P, p, dual_n, dual_m, VP_L_m, VP_R_m, Vp_L_m, Vp_R_m = hblyap.lyapunov_heavy_ball_momentum_multistep_smooth_boundary(max_beta, gamma-1, mu, L, rho, lyapunov_steps, return_all=True)
     print("\nOptimal value", value, "\n")
 
     Pmat = P.value
@@ -108,51 +108,76 @@ if __name__ == "__main__":
     print("dual variables corresponding to MONOTONICITY constraints")
     print(dual_m.value)
     
-    # # look at residuals
-    # matrix_combination_nonneg = sdp_prob.constraints[0]
-    # vector_combination_nonneg = sdp_prob.constraints[1]
-    # matrix_combination_monoto = sdp_prob.constraints[3]
-    # vector_combination_monoto = sdp_prob.constraints[4]
+    # look at residuals
+    matrix_combination_nonneg = sdp_prob.constraints[0]
+    vector_combination_nonneg = sdp_prob.constraints[1]
+    matrix_combination_monoto = sdp_prob.constraints[3]
+    vector_combination_monoto = sdp_prob.constraints[4]
     
     # print(VP_L_m)
     Residual_m = (VP_L_m - VP_R_m).value
     print("Rank of Residual_m: ", np.sum(np.linalg.svdvals(Residual_m)>1e-6))
+    print(np.linalg.svdvals(Residual_m))
     
     np.set_printoptions(5)
-    print(Residual_m)
+    # print(Residual_m)
     
-    R15 = Residual_m[0,4]
-    R55 = Residual_m[4,4]
-    R11 = Residual_m[0,0]
-    R44 = Residual_m[3,3]
-    R45 = Residual_m[3,4]
+    # R15 = Residual_m[0,4]
+    # R55 = Residual_m[4,4]
+    # R11 = Residual_m[0,0]
+    # R44 = Residual_m[3,3]
+    # R45 = Residual_m[3,4]
     
     eigvals, eigvecs = np.linalg.eigh(-Residual_m)
-    # print(eigvals)
-    # print(eigvecs)
+    print(eigvals)
+    print(eigvecs)
     
-    eigv = eigvals[-1]
-    eigvec = eigvecs[:,-1]
-    v1 = eigvec[0]
-    v4 = eigvec[3]
-    v5 = eigvec[4]
+    # eigv = eigvals[-1]
+    # eigvec = eigvecs[:,-1]
+    # v1 = eigvec[0]
+    # v4 = eigvec[3]
+    # v5 = eigvec[4]
+
+
+    # t1 = gamma**3
+    # t2 = 3*gamma**2*(1-L*gamma)
+    # t3 = gamma*(beta**2*(L*gamma-1) + 3*(L*gamma-1)**2 - mu*gamma*beta**3 - beta*(L*mu*gamma**2 - 2*mu*gamma + 2))
+    # t4 = -((L*gamma-1+beta**2)*(beta**2 + (L*gamma-1)**2 - beta*(L*mu*gamma**2 - 2*mu*gamma + 2)))
     
-    print(v1, v4, v5, np.sqrt(eigv))
+    # roots = np.sort(np.roots([t1, t2, t3, t4]))
+    # roots_pos = roots[roots>=0]
     
-    print("v4v5")
-    print(v4*v5*eigv*(-2))
-    print( (1+(2*b-1)*L*gamma-2*b*gamma*mu)/(L-mu) )
+    # test_b = roots_pos[0] / (2*(L-mu))
+    # test_a = - (beta**2 - beta*(mu*L*gamma**2-2*mu*gamma+2) + (1+gamma*(b*2*(L-mu)-L))**2) / (2*(L-mu)*beta*gamma**2)
     
-    print("v4v4")
-    print(v4*v4*eigv*(-1))
-    print( (-2+beta+2*a*gamma**2*(L-mu)+2*gamma*mu-gamma**2*mu*L) /(2*(L-mu)) )
+    # print(a - test_a)
+    # print(b - test_b)
     
-    print("v5v5")
-    print(v5*v5*eigv*(-1))
-    print(-beta/(2*(L-mu)))
     
-    print("does THIS equal to 1")
-    print(((-2*a*(-1 + beta**2)*(L - mu) + L*beta**2*mu)*(1 + (-1 + 2*b)*L*gamma - 2*b*gamma*mu))/(beta*((-1 + 2*b)*L - 2*b*mu)*(2*b*(L - mu) + beta*(-1 + L*gamma)*mu + 2*a*beta*gamma*(-L + mu))))
+    # ahat = a*2*(L-mu)
+    # ahatRHS = - (beta**2 - beta*(mu*L*gamma**2-2*mu*gamma+2) + ) / (beta*gamma**2)
+    # bhat = b*2*(L-mu)
+    # LHS = (beta**2*mu*L - ahat*(beta**2-1))*(1+gamma*(bhat-L))
+    # RHS = beta*(2*b*(L-mu)-L)*(2*b*(L-mu) + mu*beta*(L*gamma-1) - 2*a*gamma*beta*(L-mu))
+    # RHS = beta*(bhat-L)*(bhat + mu*beta*(L*gamma-1) - ahat*gamma*beta)
+    # print(LHS- RHS)
+    
+    # print(v1, v4, v5, np.sqrt(eigv))
+    
+    # print("v4v5")
+    # print(v4*v5*eigv*(-2))
+    # print( (1+(2*b-1)*L*gamma-2*b*gamma*mu)/(L-mu) )
+    
+    # print("v4v4")
+    # print(v4*v4*eigv*(-1))
+    # print( (-2+beta+2*a*gamma**2*(L-mu)+2*gamma*mu-gamma**2*mu*L) /(2*(L-mu)) )
+    
+    # print("v5v5")
+    # print(v5*v5*eigv*(-1))
+    # print(-beta/(2*(L-mu)))
+    
+    # print("does THIS equal to 1")
+    # print(((-2*a*(-1 + beta**2)*(L - mu) + L*beta**2*mu)*(1 + (-1 + 2*b)*L*gamma - 2*b*gamma*mu))/(beta*((-1 + 2*b)*L - 2*b*mu)*(2*b*(L - mu) + beta*(-1 + L*gamma)*mu + 2*a*beta*gamma*(-L + mu))))
     
     
     # print("does it equal to 1")
