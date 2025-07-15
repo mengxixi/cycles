@@ -440,17 +440,16 @@ def lyapunov_heavy_ball_momentum_multistep_smooth_boundary(beta, gamma, mu, L, r
     constraints += [ p[0] == 0]
     constraints += [ p[1] == 1 ]
 
-    constraints += [ P[0,0] == P[1,1] ]
-    constraints += [ P[0,0] == -P[0,1] ]
-    constraints += [ P[0,3] == -P[1,3] ]
-    
-    constraints += [ P[3,3] == (1-beta)/(2*(L-mu))]    
+    # constraints += [ P[0,0] == P[1,1] ]
+    # constraints += [ P[0,0] == -P[0,1] ]
+    # constraints += [ P[0,3] == -P[1,3] ]
+    # constraints += [ P[3,3] == (1-beta)/(2*(L-mu))]    
     
     ind_dual_n = [0, 1, 2, 4, 5]
     constraints += [ dual_n[ind_dual_n] == 0 ]
         
     constraints += [ dual_m[4] == p[1]/(L-mu) ]
-    ind_dual_m = [0, 1, 2, 3, 5, 6, 7, 8, 9, 10, 11]
+    ind_dual_m = [0, 1, 2, 3, 5, 6, 7, 8, 9, 11] #, 5, 6, 7, 8, 9, 10, 11]
     constraints += [ dual_m[ind_dual_m] == 0]
 
     # t1 = gamma**3

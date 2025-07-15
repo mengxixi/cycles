@@ -69,8 +69,6 @@ if __name__ == "__main__":
     assert K >= 2
     
     gamma, beta = gamma_beta_pair_on_lyapunov_boundary(K, kappa)
-    # rho = 0.90868255699
-    rho = 1
     lyapunov_steps = args.lyapunov_steps
     # a version that guarantees to fill in the gap starting from smooth boundary
     if lyapunov_steps > 1:
@@ -80,16 +78,32 @@ if __name__ == "__main__":
         
     # try a gamma on the interior
     gamma -= 1
+    
+    # bisection to find the smallest rho
+    rho_min = 0
+    rho_max = 1
+    while rho_max - rho_min > 1e-14:
+            rho = (rho_max + rho_min) / 2
+            value, sdp_prob, P, p, dual_n, dual_m, VP_L_m, VP_R_m, Vp_L_m, Vp_R_m = hblyap.lyapunov_heavy_ball_momentum_multistep_smooth_boundary(max_beta, gamma, mu, L, rho, lyapunov_steps, return_all=True)
+
+            if value != inf:
+                rho_max = rho
+            else:
+                rho_min = rho
+    
+    rho = rho_max
+                
     print("mu    = ", mu)
     print("gamma = ", gamma)
     print("beta:                   ", beta)
     print("max beta for T=%d steps: " % lyapunov_steps, max_beta)
-    
+                
+    print("smallest rho found", rho)
     value, sdp_prob, P, p, dual_n, dual_m, VP_L_m, VP_R_m, Vp_L_m, Vp_R_m = hblyap.lyapunov_heavy_ball_momentum_multistep_smooth_boundary(max_beta, gamma, mu, L, rho, lyapunov_steps, return_all=True)
     print("\nOptimal value", value, "\n")
 
     Pmat = P.value
-    # print("P\n", Pmat)
+    print("P\n", Pmat)
     
     print("P rank = ", np.sum(np.linalg.svdvals(Pmat)>1e-6))
         
@@ -112,6 +126,9 @@ if __name__ == "__main__":
     print("dual variables corresponding to MONOTONICITY constraints")
     print(dual_m.value)
     
+    print("dual_m_[10] * (L-mu)")
+    print(dual_m[10].value * (L-mu))
+    
     # look at residuals
     matrix_combination_nonneg = sdp_prob.constraints[0]
     vector_combination_nonneg = sdp_prob.constraints[1]
@@ -120,14 +137,13 @@ if __name__ == "__main__":
     
     # print(VP_L_m)
     Residual_m = (VP_L_m - VP_R_m).value
-    print(np.linalg.svdvals(Residual_m))
     print("Rank of Residual_m: ", np.sum(np.linalg.svdvals(Residual_m)>1e-6))
-    # print(np.linalg.svdvals(Residual_m))
+    print(np.linalg.svdvals(Residual_m))
     
-    # np.set_printoptions(5)
+    np.set_printoptions(5)
     # Residual_m[2,:] = 0
     # Residual_m[0,2] = 0
-    # print(Residual_m)
+    print(Residual_m)
     # # print( (a*2*(L-mu)*(beta**2-1) - mu*L*beta**2) /(2*(L-mu)))
 
     
