@@ -69,6 +69,7 @@ if __name__ == "__main__":
     assert K >= 2
     
     gamma, beta = gamma_beta_pair_on_lyapunov_boundary(K, kappa)
+    # rho = 0.90868255699
     rho = 1
     lyapunov_steps = args.lyapunov_steps
     # a version that guarantees to fill in the gap starting from smooth boundary
@@ -76,12 +77,15 @@ if __name__ == "__main__":
         max_beta = bisection_max_beta(beta, gamma, mu, L, rho, lyapunov_steps)
     else:
         max_beta = beta
+        
+    # try a gamma on the interior
+    gamma -= 1
     print("mu    = ", mu)
     print("gamma = ", gamma)
     print("beta:                   ", beta)
     print("max beta for T=%d steps: " % lyapunov_steps, max_beta)
     
-    value, sdp_prob, P, p, dual_n, dual_m, VP_L_m, VP_R_m, Vp_L_m, Vp_R_m = hblyap.lyapunov_heavy_ball_momentum_multistep_smooth_boundary(max_beta, gamma-1, mu, L, rho, lyapunov_steps, return_all=True)
+    value, sdp_prob, P, p, dual_n, dual_m, VP_L_m, VP_R_m, Vp_L_m, Vp_R_m = hblyap.lyapunov_heavy_ball_momentum_multistep_smooth_boundary(max_beta, gamma, mu, L, rho, lyapunov_steps, return_all=True)
     print("\nOptimal value", value, "\n")
 
     Pmat = P.value
@@ -116,21 +120,81 @@ if __name__ == "__main__":
     
     # print(VP_L_m)
     Residual_m = (VP_L_m - VP_R_m).value
-    print("Rank of Residual_m: ", np.sum(np.linalg.svdvals(Residual_m)>1e-6))
     print(np.linalg.svdvals(Residual_m))
+    print("Rank of Residual_m: ", np.sum(np.linalg.svdvals(Residual_m)>1e-6))
+    # print(np.linalg.svdvals(Residual_m))
     
-    np.set_printoptions(5)
+    # np.set_printoptions(5)
+    # Residual_m[2,:] = 0
+    # Residual_m[0,2] = 0
     # print(Residual_m)
+    # # print( (a*2*(L-mu)*(beta**2-1) - mu*L*beta**2) /(2*(L-mu)))
+
     
-    # R15 = Residual_m[0,4]
-    # R55 = Residual_m[4,4]
-    # R11 = Residual_m[0,0]
-    # R44 = Residual_m[3,3]
-    # R45 = Residual_m[3,4]
+    # eigvals, eigvecs = np.linalg.eigh(-Residual_m)
+    # # print(eigvals)
+    # # print(eigvecs)
+    # # # v1 = (eigvecs[:,-1]*np.sqrt(eigvals[-1]))
+    # # # v2 = (eigvecs[:,-2]*np.sqrt(eigvals[-2]))
+    # # # v3 = (eigvecs[:,-3]*np.sqrt(eigvals[-3]))
+
+    # A = a*2*(L-mu)
+    # B = b*2*(L-mu)
+
+    # eps = 3e-9
+    # U = np.linalg.cholesky(-Residual_m + eps*np.eye(5), upper=True)
+    # print("U")
+    # print(U)
     
-    eigvals, eigvecs = np.linalg.eigh(-Residual_m)
-    print(eigvals)
-    print(eigvecs)
+    # z = 2*(L-mu)
+    
+    # U[3,:] = U[3,:] - U[4,:]*U[3,4]/U[4,4]
+    # U[0,:] = U[0,:] - U[4,:]*U[0,4]/U[4,4]
+    # U[0,:] = U[0,:] - U[3,:]*U[0,3]/U[3,3]
+    # print(U)
+    
+    # print(U[0,0]**2)
+    # print((A*(1-beta**2) + beta**2*mu*L)/z)
+    
+    # print(U[0,0]*U[0,3])
+    # print((B - A*gamma*beta + (L*gamma-1)*mu*beta)/z)
+    
+    # print(U[0,0]*U[0,4])
+    # print((L-B)*beta/z)
+    
+    # print(U[0,0]*(U[0,3]+U[0,4]))
+    # print((B*(1-beta) + beta*(L-mu) - gamma*beta*(A-mu*L))/z)
+    
+    # print("check")
+    # print(B)
+    # print(beta*(A*gamma- (L*gamma-1)*mu))
+    # print("\n")
+    # print(((B-L)*beta)/(2*(L-mu)))
+    # print(-U[0,0]*U[0,4])
+    
+    # print("\n")
+    # print((1+gamma*(B-L))/(2*(L-mu)))
+    # print(U[3,3]*U[3,4] + U[0,3]*U[0,4] )
+    
+    # print("\n")
+    # print((beta-2 + A*gamma**2 - gamma*(L*gamma-2)*mu)/(2*(L-mu)))
+    # print(U[0,3]**2 + U[3,3]**2)
+    
+    # print("\n")
+    # print(beta/(2*(L-mu)))
+    # print(U[0,4]**2 + U[3,4]**2 + U[4,4]**2)
+    
+    # print("Cholesky upper")
+    # print(U)
+    # # ratio = U[0,0]/U[1,1]
+    # # U[1,:] *= ratio
+    # # U[1,:] += U[0,:]
+    # # print("after row op")
+    # # print(U)
+    
+    
+    
+
     
     # eigv = eigvals[-1]
     # eigvec = eigvecs[:,-1]
