@@ -166,13 +166,13 @@ if __name__ == "__main__":
                 ax.set_xlabel(r"$\beta$", fontsize=17)
                 
             ax = axs_all[j, 1]
-            if label == "e":
-                # ax.set_ylim(0.0, 1.0)
-                # ax.set_xlim(0.0, 1.0)
-                # coeffs = np.polyfit(Betas, params, 1, rcond=1e-32)
-                # ax.plot(Betas, coeffs[0]*np.array(Betas) + coeffs[1], linewidth=2, color=colors[i_mu], linestyle="--")
-                coeffs = np.polyfit(Betas, params, 2, rcond=1e-32)
-                ax.plot(Betas, coeffs[0]*np.array(Betas)**2 + coeffs[1]*np.array(Betas) + coeffs[2], linewidth=2, color=colors[i_mu], linestyle="--")
+            # if label == "e":
+            #     # ax.set_ylim(0.0, 1.0)
+            #     # ax.set_xlim(0.0, 1.0)
+            #     # coeffs = np.polyfit(Betas, params, 1, rcond=1e-32)
+            #     # ax.plot(Betas, coeffs[0]*np.array(Betas) + coeffs[1], linewidth=2, color=colors[i_mu], linestyle="--")
+            #     coeffs = np.polyfit(Betas, params, 2, rcond=1e-32)
+            #     ax.plot(Betas, coeffs[0]*np.array(Betas)**2 + coeffs[1]*np.array(Betas) + coeffs[2], linewidth=2, color=colors[i_mu], linestyle="--")
             ax.plot(Betas, params, linewidth=2, color=colors[i_mu], label=r"$\mu=%.2f$" % mu)
             ax.set_ylabel(r"$%s$" % label, fontsize=17)    
             

@@ -434,23 +434,46 @@ def lyapunov_heavy_ball_momentum_multistep_smooth_boundary(beta, gamma, mu, L, r
     constraints_n, dual_n = get_nonnegativity_constraints(P, p, mu=mu, L=L)
     constraints_m, dual_m, VP_L_m, VP_R_m, Vp_L_m, Vp_R_m = get_monotonicity_constraints(P, p, beta=beta, gamma=gamma, mu=mu, L=L, rho=rho, lyapunov_steps=lyapunov_steps)
     constraints = constraints_n + constraints_m
-    
-    constraints += [ P[2,:] == 0 ] # g_{k-1}
-    constraints += [ P[:,2] == 0 ]
-    constraints += [ p[0] == 0]
-    constraints += [ p[1] == 1 ]
 
-    # constraints += [ P[0,0] == P[1,1] ]
-    # constraints += [ P[0,0] == -P[0,1] ]
-    # constraints += [ P[0,3] == -P[1,3] ]
-    # constraints += [ P[3,3] == (1-beta)/(2*(L-mu))]    
+    # try Baptiste's lyapunov on the boundary
+    constraints += [ P[3,:] == 0 ] # g_k
+    constraints += [ P[:,3] == 0 ]
+    constraints += [ p[0] == 1 ]
+    constraints += [ p[1] == 0 ]
     
-    ind_dual_n = [0, 1, 2, 4, 5]
-    constraints += [ dual_n[ind_dual_n] == 0 ]
+    constraints += [ P[0,0] == P[1,1] ]
+    constraints += [ P[0,0] == -P[0,1] ]
+    constraints += [ P[0,2] == -P[1,2] ]
+    
+    kappa = mu/L
+    C = (1/(2*gamma)) * (1+beta-2*kappa*beta)/(beta*(1-kappa))
+    
+    P00 = C - 1/(2*gamma)
+    constraints += [ P[0,0] == P00 ]
+    
+    B = ( (1-beta)**2 + L*gamma*(1-beta*kappa) )/( (1+beta-2*kappa*beta)*2*L)
+    P22 = C * B**2
+    constraints += [ P[2,2] == P22 ]
+
+    P02 = C*B
+    constraints += [ P[0,2] == -P02 ]
+    
+    # constraints += [ P[2,:] == 0 ] # g_{k-1}
+    # constraints += [ P[:,2] == 0 ]
+    # constraints += [ p[0] == 0]
+    # constraints += [ p[1] == 1 ]
+
+    # # constraints += [ P[0,0] == P[1,1] ]
+    # # constraints += [ P[0,0] == -P[0,1] ]
+    # # constraints += [ P[0,3] == -P[1,3] ]
+    # # constraints += [ P[3,3] == (1-beta)/(2*(L-mu))]    
+    
+    # ind_dual_n = [0, 1, 2, 4, 5]
+    # constraints += [ dual_n[ind_dual_n] == 0 ]
         
-    constraints += [ dual_m[4] == p[1]/(L-mu) ]
-    ind_dual_m = [0, 1, 2, 3, 5, 6, 7, 8, 9, 11] #, 5, 6, 7, 8, 9, 10, 11]
-    constraints += [ dual_m[ind_dual_m] == 0]
+    # constraints += [ dual_m[4] == p[1]/(L-mu) ]
+    # ind_dual_m = [0, 1, 2, 3, 5, 6, 7, 8, 9, 11] #, 5, 6, 7, 8, 9, 10, 11]
+    # constraints += [ dual_m[ind_dual_m] == 0]
 
     # t1 = gamma**3
     # t2 = 3*gamma**2*(1-L*gamma)

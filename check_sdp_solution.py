@@ -77,7 +77,7 @@ if __name__ == "__main__":
         max_beta = beta
         
     # try a gamma on the interior
-    gamma -= 1
+    # gamma -= 1
     
     # bisection to find the smallest rho
     rho_min = 0
