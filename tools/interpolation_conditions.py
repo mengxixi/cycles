@@ -12,6 +12,18 @@ def square(u):
     return inner_product(u, u)
 
 
+def smooth_strongly_convex_matrix_i_j(pointi, pointj, mu, L):
+    xi, gi = pointi
+    xj, gj = pointj
+
+    # both G and F are off by (L-mu) but they'll be picked up 
+    # by the dual variables
+    G = inner_product(gj, xi - xj) + 1 / (2 * L) * square(gi - gj) + mu / (2 * (1 - mu / L)) * square(
+        xi - xj - 1 / L * gi + 1 / L * gj)
+    
+    return G
+
+
 def smooth_strongly_convex_interpolation_i_j(pointi, pointj, mu, L):
     xi, gi, fi = pointi
     xj, gj, fj = pointj
