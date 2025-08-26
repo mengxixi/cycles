@@ -72,6 +72,7 @@ if __name__ == "__main__":
     lyapunov_steps = args.lyapunov_steps
     # a version that guarantees to fill in the gap starting from smooth boundary
     if lyapunov_steps > 1:
+        rho = 1.0
         max_beta = bisection_max_beta(beta, gamma, mu, L, rho, lyapunov_steps)
     else:
         max_beta = beta
@@ -105,46 +106,37 @@ if __name__ == "__main__":
     Pmat = P.value
     print("P\n", Pmat)
     
-    print("P rank = ", np.sum(np.linalg.svdvals(Pmat)>1e-6))
+    # print("P rank = ", np.sum(np.linalg.svdvals(Pmat)>1e-6))
         
     pvec = p.value
     # print("p\n", pvec)
 
-    d = p.value[1]
-    b = Pmat[0,3]
-    a = Pmat[0,0]
-    c = Pmat[3,3]
+    # d = p.value[1]
+    # b = Pmat[0,3]
+    # a = Pmat[0,0]
+    # c = Pmat[3,3]
 
-    print("a       ", a)
-    print("b       ", b)
-    print("c       ", c)
-    print("d       ", d)
-            
-    print("dual variables corresponding to NONNEGATIVITY constraints")
-    print(dual_n.value)
+    # print("a       ", a)
+    # print("b       ", b)
+    # print("c       ", c)
+    # print("d       ", d)
         
-    print("dual variables corresponding to MONOTONICITY constraints")
-    print(dual_m.value)
+    # print("dual variables corresponding to MONOTONICITY constraints")
+    # print(dual_m.value)
     
-    print("dual_m_[10] * (L-mu)")
-    print(dual_m[10].value * (L-mu))
+    # # look at residuals
+    # matrix_combination_nonneg = sdp_prob.constraints[0]
+    # vector_combination_nonneg = sdp_prob.constraints[1]
+    # matrix_combination_monoto = sdp_prob.constraints[3]
+    # vector_combination_monoto = sdp_prob.constraints[4]
     
-    # look at residuals
-    matrix_combination_nonneg = sdp_prob.constraints[0]
-    vector_combination_nonneg = sdp_prob.constraints[1]
-    matrix_combination_monoto = sdp_prob.constraints[3]
-    vector_combination_monoto = sdp_prob.constraints[4]
+    # # # print(VP_L_m)
+    # Residual_m = (VP_L_m - VP_R_m).value
+    # print("Rank of Residual_m: ", np.sum(np.linalg.svdvals(Residual_m)>1e-6))
+    # # print(np.linalg.svdvals(Residual_m))
     
-    # print(VP_L_m)
-    Residual_m = (VP_L_m - VP_R_m).value
-    print("Rank of Residual_m: ", np.sum(np.linalg.svdvals(Residual_m)>1e-6))
-    print(np.linalg.svdvals(Residual_m))
-    
-    np.set_printoptions(5)
-    # Residual_m[2,:] = 0
-    # Residual_m[0,2] = 0
-    print(Residual_m)
-    # # print( (a*2*(L-mu)*(beta**2-1) - mu*L*beta**2) /(2*(L-mu)))
+    # np.set_printoptions(5)
+    # print(Residual_m)
 
     
     # eigvals, eigvecs = np.linalg.eigh(-Residual_m)
@@ -292,10 +284,10 @@ if __name__ == "__main__":
     # print("lambda(k, k+1)", lambdakk1)
     # print("d/(1-mu)      ", d/(1-mu))
     
-    # mm = lyapunov_steps+3
-    # M = np.zeros((mm, mm))
-    # row_idx, col_idx = np.where(~np.eye(lyapunov_steps+3, dtype=bool))
-    # M[row_idx, col_idx] = dual_m.value
+    mm = lyapunov_steps+3
+    M = np.zeros((mm, mm))
+    row_idx, col_idx = np.where(~np.eye(lyapunov_steps+3, dtype=bool))
+    M[row_idx, col_idx] = dual_m.value
     
     # fig, ax = plt.subplots(figsize=(4, 4), layout="constrained")
     # ax.imshow(M)
@@ -317,7 +309,17 @@ if __name__ == "__main__":
     # plt.savefig(fig_fn)
     # print("Figure saved at \n%s" % fig_fn)
 
-    # np.set_printoptions(precision=2)
+    # np.set_printoptions(precision=4)
     # print("dual variables corresponding to MONOTONICITY constraints")
     # print(M)
     
+    # # l0 = dual_m[0].value * (L-mu)
+    # # print("Lambda_0: ", l0)
+    
+    # # c = Pmat[1,2]
+    # # b = Pmat[2,2]
+    # # print("c", c)
+    # # print("b", b)
+    
+    # print("dual variables corresponding to NONNEGATIVITY constraints")
+    # print(dual_n.value)

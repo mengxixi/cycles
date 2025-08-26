@@ -22,41 +22,41 @@ def symmetrize(A):
 
 
 def get_A_matrices(mu, L, gamma):
-    # A1 = symmetrize([
-    #     [0, 0, 0],
-    #     [0, (gamma-1/L)**2 *(mu*L)/(2*(L-mu)) + 1/(2*L), gamma/2 - 1/(2*L) - (gamma-1/L)*mu/(2*(L-mu))],
-    #     [0, 0, 1/(2*(L-mu))]
-    # ])
+    A1 = symmetrize([
+        [0, 0, 0],
+        [0, (gamma-1/L)**2 *(mu*L)/(2*(L-mu)) + 1/(2*L), gamma/2 - 1/(2*L) + (gamma-1/L)*mu/(2*(L-mu))],
+        [0, 0, 1/(2*(L-mu))]
+    ])
     
-    # A2 = symmetrize([
-    #     [0, 0, 0],
-    #     [0, (gamma-1/L)**2 *(mu*L)/(2*(L-mu)) + 1/(2*L) - gamma, 1/(2*L) - (gamma-1/L)*mu/(2*(L-mu))],
-    #     [0, 0, 1/(2*(L-mu))]
-    # ])
+    A2 = symmetrize([
+        [0, 0, 0],
+        [0, (gamma-1/L)**2 *(mu*L)/(2*(L-mu)) + 1/(2*L) - gamma, -1/(2*L) + (gamma-1/L)*mu/(2*(L-mu))],
+        [0, 0, 1/(2*(L-mu))]
+    ])
     
-    # A3 = symmetrize([
-    #     [mu*L/(2*(L-mu)), -mu/(2*(L-mu)), 0],
-    #     [0, 1/(2*(L-mu)), 0],
-    #     [0, 0, 0]
-    # ])
+    A3 = symmetrize([
+        [mu*L/(2*(L-mu)), -mu/(2*(L-mu)), 0],
+        [0, 1/(2*(L-mu)), 0],
+        [0, 0, 0]
+    ])
     
-    # A4 = symmetrize([
-    #     [mu*L/(2*(L-mu)), -L/(2*(L-mu)), 0],
-    #     [0, 1/(2*(L-mu)), 0],
-    #     [0, 0, 0]
-    # ])
+    A4 = symmetrize([
+        [mu*L/(2*(L-mu)), -L/(2*(L-mu)), 0],
+        [0, 1/(2*(L-mu)), 0],
+        [0, 0, 0]
+    ])
     
-    # A5 = symmetrize([
-    #     [mu*L/(2*(L-mu)), -gamma*mu*L/(2*(L-mu)), -mu/(2*(L-mu))],
-    #     [0, gamma**2 * mu*L/(2*(L-mu)), gamma*mu/(2*(L-mu))],
-    #     [0, 0, 1/(2*(L-mu))]
-    # ])
+    A5 = symmetrize([
+        [mu*L/(2*(L-mu)), -gamma*mu*L/(2*(L-mu)), -mu/(2*(L-mu))],
+        [0, gamma**2 * mu*L/(2*(L-mu)), gamma*mu/(2*(L-mu))],
+        [0, 0, 1/(2*(L-mu))]
+    ])
     
-    # A6 = symmetrize([
-    #     [mu*L/(2*(L-mu)), -gamma*mu*L/(2*(L-mu)), -L/(2*(L-mu))],
-    #     [0, gamma**2 * mu*L/(2*(L-mu)), gamma*L/(2*(L-mu))],
-    #     [0, 0, 1/(2*(L-mu))]
-    # ])
+    A6 = symmetrize([
+        [mu*L/(2*(L-mu)), -gamma*mu*L/(2*(L-mu)), -L/(2*(L-mu))],
+        [0, gamma**2 * mu*L/(2*(L-mu)), gamma*L/(2*(L-mu))],
+        [0, 0, 1/(2*(L-mu))]
+    ])
     
     xk, gk, gkk = np.eye(3)
     xs = np.zeros(3)
@@ -98,6 +98,16 @@ def solve_dual_SDP(mu, L, gamma):
     constraints += [ lambdas >= 0 ]
     constraints += [ tau >= 0 ]
     
+    # additional constraints to simplify the dual variables
+    # constraints += [ lambdas[1] == 0 ]
+    # constraints += [ lambdas[2] == 0 ]
+    # constraints += [ lambdas[4] == 0 ]
+
+    sqrttau = np.maximum(np.abs(1-gamma*mu), np.abs(1-gamma*L))
+    constraints += [ lambdas[0] == sqrttau ]
+    constraints += [ lambdas[5] == 1-sqrttau ]
+    constraints += [ lambdas[3] == sqrttau - sqrttau**2]
+    
     prob = cp.Problem(cp.Minimize(tau), constraints=constraints)
     min_tau = prob.solve(solver="MOSEK")
     
@@ -113,15 +123,6 @@ def solve_primal_SDP(mu, L, gamma):
     fkk = fvars[1]
     fs = 0
     
-    # Anum = symmetrize([
-    #     [1, -gamma, 0],
-    #     [0, gamma**2, 0],
-    #     [0, 0, 0]
-    # ])
-    
-    # Adenom = np.zeros((3,3))
-    # Adenom[0,0] = 1
-    # TODO: We're missing something here, G ends up being 0 and everything is set to 0
     constraints = []
     constraints += [ fkk - fk + cp.trace(As[0]@G) <= 0 ]
     constraints += [ fk - fkk + cp.trace(As[1]@G) <= 0 ]
@@ -163,7 +164,7 @@ def solve_primal_PEP(mu, L, gamma, return_G=False):
 if __name__ == "__main__":
     mu = 0.1
     L = 1
-    gammas = np.linspace(-1, 3, num=50)
+    gammas = np.linspace(-1, 3, num=300)
     
     taus = []
     rhosqs = []
@@ -177,8 +178,8 @@ if __name__ == "__main__":
         rhosq = solve_primal_SDP(mu, L, gamma)
         rhosqs += [rhosq]
         
-        pep_rhosq = solve_primal_PEP(mu, L, gamma)
-        pep_rhosqs += [pep_rhosq]
+        # pep_rhosq = solve_primal_PEP(mu, L, gamma)
+        # pep_rhosqs += [pep_rhosq]
         
     duals = np.array(duals)
     
@@ -199,9 +200,9 @@ if __name__ == "__main__":
     ax = axs[1]
     ax.plot(gammas, taus, color="magenta")
     ax.plot(gammas, rhosqs, color="blue", linestyle="--")
-    ax.plot(gammas, pep_rhosqs, color="green", linestyle="--")
+    # ax.plot(gammas, pep_rhosqs, color="green", linestyle="--")
     
-    # theoretical = np.maximum((1-gammas*mu)**2, (1-gammas*L)**2)
+    # theoretical = np.maximum(np.abs(1-gammas*mu), np.abs(1-gammas*L))**2
     # ax.plot(gammas, theoretical, color="black")
     
     ax.set_xlabel(r"$\gamma$", fontsize=17)

@@ -72,7 +72,7 @@ if __name__ == "__main__":
 
     # fix mu
     K_list = args.K_list
-    nrows = 8
+    nrows = 14
     ncols = 1
     fig_all, axs_all = plt.subplots(nrows=nrows, ncols=ncols, 
                             figsize=(2.5*ncols,2.5*nrows),
@@ -90,6 +90,12 @@ if __name__ == "__main__":
         f_list = np.zeros_like(mu_list)
         p1_list = np.zeros_like(mu_list)
         p2_list = np.zeros_like(mu_list)
+        l0_list = np.zeros_like(mu_list)
+        l1_list = np.zeros_like(mu_list)
+        l2_list = np.zeros_like(mu_list)
+        l3_list = np.zeros_like(mu_list)
+        l4_list = np.zeros_like(mu_list)
+        l5_list = np.zeros_like(mu_list)
 
         for i, mu in enumerate(mu_list):
             _, beta = get_gamma_beta_pair(mu, L, K)
@@ -99,17 +105,36 @@ if __name__ == "__main__":
             if T > 1:
                 beta = bisection_max_beta(beta, gamma, mu, L, rho, T)
             
-            value, _, P, p, _, _ = hblyap.lyapunov_heavy_ball_momentum_multistep_smooth_boundary(beta, gamma, mu, L, rho, T, return_all=True)
-            assert value != inf
+            gamma_max = gamma
+            gamma_min = 0
+            value, _, P, p, dual_n, dual_m, _, _, _, _ = hblyap.lyapunov_heavy_ball_momentum_multistep_smooth_boundary(beta, gamma, mu, L, rho, T, return_all=True)
+            # assert value != inf
+            if value == inf:
+            # find the largest gamma that works for this beta
+                while gamma_max - gamma_min > 1e-10:
+                    gamma = (gamma_max + gamma_min) / 2
+                    value, _, P, p, dual_n, dual_m, _, _, _, _ = hblyap.lyapunov_heavy_ball_momentum_multistep_smooth_boundary(beta, gamma, mu, L, rho, T, return_all=True)
+                    if value == inf:
+                        gamma_max = gamma
+                    else:
+                        gamma_min = gamma
+                # final solve
+                value, _, P, p, dual_n, dual_m, _, _, _, _ = hblyap.lyapunov_heavy_ball_momentum_multistep_smooth_boundary(beta, gamma_min, mu, L, rho, T, return_all=True)
 
-            a = P.value[0,0]
-            b = P.value[2,2]
-            c = P.value[3,3]
-            d = P.value[1,2]
-            e = P.value[1,3]
-            f = P.value[2,3]
+            a = P.value[0,0] * 2*(L-mu)
+            b = P.value[2,2] * 2*(L-mu)
+            c = -P.value[0,2] * 2*(L-mu)
+            d = P.value[0,3] * 2*(L-mu)
+            e = -P.value[2,3] * 2*(L-mu)
+            f = 0
             p1 = p.value[0]
             p2 = p.value[1]
+            l0 = dual_m.value[0]* 2*(L-mu)
+            l1 = 0 #dual_n.value[1]* 2*(L-mu)
+            l2 = 0 #dual_n.value[2]* 2*(L-mu)
+            l3 = 0 #dual_n.value[3]* 2*(L-mu)
+            l4 = 0 #dual_n.value[4]* 2*(L-mu)
+            l5 = 0 #dual_n.value[5]* 2*(L-mu)
             
             a_list[i] = a
             b_list[i] = b
@@ -119,6 +144,12 @@ if __name__ == "__main__":
             f_list[i] = f
             p1_list[i] = p1
             p2_list[i] = p2
+            l0_list[i] = l0
+            l1_list[i] = l1
+            l2_list[i] = l2
+            l3_list[i] = l3
+            l4_list[i] = l4
+            l5_list[i] = l5
 
         # make plots
         fig, axs = plt.subplots(nrows=nrows, ncols=ncols, 
@@ -126,14 +157,10 @@ if __name__ == "__main__":
                                 constrained_layout=True)
 
 
-        for j, (params, label) in enumerate(zip([a_list, b_list, c_list, d_list, e_list, f_list, p1_list, p2_list], ["a", "b", "c", "d", "e", "f", r"$p_1$", r"$p_2$"])):
+        for j, (params, label) in enumerate(zip([a_list, b_list, c_list, d_list, e_list, f_list, p1_list, p2_list, l0_list, l1_list, l2_list, l3_list, l4_list, l5_list], ["a", "b", "c", "d", "e", "f", r"$p_1$", r"$p_2$", "l0", "l1", "l2", "l3", "l4", "l5"])):
             ax = axs[j]
             ax.plot(mu_list, params, linewidth=2, color=colors[i_K])
             ax.set_ylabel(r"$%s$" % label, fontsize=17)    
-            
-            # if label == "d":
-            #     coeffs = np.polyfit(mu_list, params, deg=1)
-            #     print("K=%d"%K, coeffs)
 
             if j == nrows - 1:
                 ax.set_xlabel(r"$\mu$", fontsize=17)
@@ -142,6 +169,12 @@ if __name__ == "__main__":
             lab = r"$K=%.2f$" % K
             ax.plot(mu_list, params, linewidth=2, color=colors[i_K], label=lab)
             ax.set_ylabel(r"$%s$" % label, fontsize=17)    
+            
+            # shift = 1
+            # if label == "c":
+            #     ax.plot(mu_list, d_list + shift, linewidth=2, color=colors[i_K], linestyle="--", marker=".", markevery=10)
+            # if label == "b":
+            #     ax.plot(mu_list, e_list + shift, linewidth=2, color=colors[i_K], linestyle="--", marker=".", markevery=10)
             
             if j == nrows - 1:
                 ax.set_xlabel(r"$\mu$", fontsize=17)
