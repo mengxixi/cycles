@@ -416,7 +416,7 @@ def get_colored_graphics(method, mu, L, max_cycle_length, add_background=True, a
 
 def verify_multistep_lyapunov_via_pepit(gamma, beta, mu, L, T):
     rho = 1 
-    value, _, P, p, _, _ = hblyap.lyapunov_heavy_ball_momentum_multistep(beta, gamma, mu, L, rho, T, return_all=True)
+    value, _, P, p, _, _ = hblyap.lyapunov_heavy_ball_momentum_multistep_smooth_boundary(beta, gamma, mu, L, rho, T, return_all=True)
     assert value == 0.
     
     # extract the values for corresponding terms in the lyapunov function

@@ -78,6 +78,7 @@ if __name__ == "__main__":
         max_beta = beta
         
     # try a gamma on the interior
+    beta -= 0.2
     gamma -= 1
     
     # bisection to find the smallest rho
@@ -85,7 +86,7 @@ if __name__ == "__main__":
     rho_max = 1
     while rho_max - rho_min > 1e-14:
             rho = (rho_max + rho_min) / 2
-            value, sdp_prob, P, p, dual_n, dual_m, VP_L_m, VP_R_m, Vp_L_m, Vp_R_m = hblyap.lyapunov_heavy_ball_momentum_multistep_smooth_boundary(max_beta, gamma, mu, L, rho, lyapunov_steps, return_all=True)
+            value = hblyap.lyapunov_heavy_ball_momentum_multistep_smooth_boundary(max_beta, gamma, mu, L, rho, lyapunov_steps)
 
             if value != inf:
                 rho_max = rho
@@ -93,6 +94,12 @@ if __name__ == "__main__":
                 rho_min = rho
     
     rho = rho_max
+    
+    # gamma = 3.5
+    # beta = 0.95
+    # max_beta = beta
+    # lyapunov_steps = args.lyapunov_steps
+    # rho = 1.0
                 
     print("mu    = ", mu)
     print("gamma = ", gamma)
@@ -100,16 +107,43 @@ if __name__ == "__main__":
     print("max beta for T=%d steps: " % lyapunov_steps, max_beta)
                 
     print("smallest rho found", rho)
-    value, sdp_prob, P, p, dual_n, dual_m, VP_L_m, VP_R_m, Vp_L_m, Vp_R_m = hblyap.lyapunov_heavy_ball_momentum_multistep_smooth_boundary(max_beta, gamma, mu, L, rho, lyapunov_steps, return_all=True)
+    value, diagnostics = hblyap.lyapunov_heavy_ball_momentum_multistep_smooth_boundary(max_beta, gamma, mu, L, rho, lyapunov_steps, return_all=True)
     print("\nOptimal value", value, "\n")
 
-    Pmat = P.value
-    print("P\n", Pmat)
-    
-    # print("P rank = ", np.sum(np.linalg.svdvals(Pmat)>1e-6))
+    P, p, A, a, duals_n, duals_m, R_vec_m, R_mat_m, R_vec_n, R_mat_n = diagnostics
         
-    pvec = p.value
-    # print("p\n", pvec)
+    print("p\n", p)
+    print("P\n", P)
+    
+    print("a\n", a)
+    print("A\n", A)
+    
+    # print("Residual_n\n", R_vec_n)
+    print("Residual_n\n", R_mat_n)
+    # print(np.linalg.eigvalsh(R_mat_n))
+    
+    # print("Residual_m\n", R_vec_m)
+    print("Residual_m\n", R_mat_m)
+    
+    R11_thr = (beta**2 * (-2*P[0,0]*(L - mu) * (beta**2 - rho) + L*p[0]*mu*(2 + beta*(2 + beta - 2 * rho) - rho)))/(2*(L-mu))
+    R11_num = R_mat_m[0,0]
+    
+    print(R11_thr - R11_num)
+    
+    R12_thr = (beta*(2*P[0,0]*beta*(L - mu)*(beta**2 - rho) + L*p[0]*mu*(-((1 + beta)*(2 + beta + beta**2)) + 2*(1 + beta + beta**2)*rho)))/(2*(L-mu))
+    R12_num = R_mat_m[0,1]
+    
+    print(R12_thr - R12_num)
+    
+    R55_thr = (p[0] - 2*P[3,3]*(L-mu))/(2*(L-mu))
+    R55_num = R_mat_m[4,4]
+    
+    print(R55_thr - R55_num)
+    
+    # print(np.linalg.eigvalsh(R_mat_m))
+    
+    # print(VP.value)
+    # quit()
 
     # d = p.value[1]
     # b = Pmat[0,3]
@@ -133,11 +167,23 @@ if __name__ == "__main__":
     # # # print(VP_L_m)
     # Residual_m = (VP_L_m - VP_R_m).value
     # print("Rank of Residual_m: ", np.sum(np.linalg.svdvals(Residual_m)>1e-6))
+    # print(np.linalg.svdvals(Residual_m))
     # # print(np.linalg.svdvals(Residual_m))
     
     # np.set_printoptions(5)
     # print(Residual_m)
 
+
+    # p = p.value[0]
+    # etak = dual_m.value[0]
+    # etas = dual_m.value[-1]
+    # print(etak, p*rho/(L-mu))
+    # print(etas, p*(1-rho)/(L-mu))
+    
+    # b = Pmat[2,2]
+    # c = Pmat[1,2]
+    # print(b / (1-beta) * (L-mu))
+    # print(c * rho)
     
     # eigvals, eigvecs = np.linalg.eigh(-Residual_m)
     # # print(eigvals)
@@ -284,10 +330,10 @@ if __name__ == "__main__":
     # print("lambda(k, k+1)", lambdakk1)
     # print("d/(1-mu)      ", d/(1-mu))
     
-    mm = lyapunov_steps+3
-    M = np.zeros((mm, mm))
-    row_idx, col_idx = np.where(~np.eye(lyapunov_steps+3, dtype=bool))
-    M[row_idx, col_idx] = dual_m.value
+    # mm = lyapunov_steps+3
+    # M = np.zeros((mm, mm))
+    # row_idx, col_idx = np.where(~np.eye(lyapunov_steps+3, dtype=bool))
+    # M[row_idx, col_idx] = dual_m.value
     
     # fig, ax = plt.subplots(figsize=(4, 4), layout="constrained")
     # ax.imshow(M)
@@ -313,13 +359,3 @@ if __name__ == "__main__":
     # print("dual variables corresponding to MONOTONICITY constraints")
     # print(M)
     
-    # # l0 = dual_m[0].value * (L-mu)
-    # # print("Lambda_0: ", l0)
-    
-    # # c = Pmat[1,2]
-    # # b = Pmat[2,2]
-    # # print("c", c)
-    # # print("b", b)
-    
-    # print("dual variables corresponding to NONNEGATIVITY constraints")
-    # print(dual_n.value)

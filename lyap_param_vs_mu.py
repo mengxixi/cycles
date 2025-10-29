@@ -72,8 +72,8 @@ if __name__ == "__main__":
 
     # fix mu
     K_list = args.K_list
-    nrows = 14
-    ncols = 1
+    nrows = 15
+    ncols = 2
     fig_all, axs_all = plt.subplots(nrows=nrows, ncols=ncols, 
                             figsize=(2.5*ncols,2.5*nrows),
                             constrained_layout=True)
@@ -81,7 +81,9 @@ if __name__ == "__main__":
     for i_K, K in enumerate(K_list):
         n_pts = 100
         mu_list = np.linspace(0, 1, n_pts+2, endpoint=False)[1:-1]
-
+        beta_list = np.zeros_like(mu_list)
+        gamma_list = np.zeros_like(mu_list)
+        
         a_list = np.zeros_like(mu_list)
         b_list = np.zeros_like(mu_list)
         c_list = np.zeros_like(mu_list)
@@ -96,6 +98,7 @@ if __name__ == "__main__":
         l3_list = np.zeros_like(mu_list)
         l4_list = np.zeros_like(mu_list)
         l5_list = np.zeros_like(mu_list)
+        Res = [np.zeros_like(mu_list) for _ in range(15)]
 
         for i, mu in enumerate(mu_list):
             _, beta = get_gamma_beta_pair(mu, L, K)
@@ -107,34 +110,48 @@ if __name__ == "__main__":
             
             gamma_max = gamma
             gamma_min = 0
-            value, _, P, p, dual_n, dual_m, _, _, _, _ = hblyap.lyapunov_heavy_ball_momentum_multistep_smooth_boundary(beta, gamma, mu, L, rho, T, return_all=True)
+            value, diagnostics = hblyap.lyapunov_heavy_ball_momentum_multistep_smooth_boundary(beta, gamma, mu, L, rho, T, return_all=True)
             # assert value != inf
             if value == inf:
             # find the largest gamma that works for this beta
                 while gamma_max - gamma_min > 1e-10:
-                    gamma = (gamma_max + gamma_min) / 2
-                    value, _, P, p, dual_n, dual_m, _, _, _, _ = hblyap.lyapunov_heavy_ball_momentum_multistep_smooth_boundary(beta, gamma, mu, L, rho, T, return_all=True)
+                    gamma_test = (gamma_max + gamma_min) / 2
+                    value, diagnostics = hblyap.lyapunov_heavy_ball_momentum_multistep_smooth_boundary(beta, gamma, mu, L, rho, T, return_all=True)
                     if value == inf:
-                        gamma_max = gamma
+                        gamma_max = gamma_test
                     else:
-                        gamma_min = gamma
-                # final solve
-                value, _, P, p, dual_n, dual_m, _, _, _, _ = hblyap.lyapunov_heavy_ball_momentum_multistep_smooth_boundary(beta, gamma_min, mu, L, rho, T, return_all=True)
-
-            a = P.value[0,0] * 2*(L-mu)
-            b = P.value[2,2] * 2*(L-mu)
-            c = -P.value[0,2] * 2*(L-mu)
-            d = P.value[0,3] * 2*(L-mu)
-            e = -P.value[2,3] * 2*(L-mu)
-            f = 0
-            p1 = p.value[0]
-            p2 = p.value[1]
-            l0 = dual_m.value[0]* 2*(L-mu)
-            l1 = 0 #dual_n.value[1]* 2*(L-mu)
-            l2 = 0 #dual_n.value[2]* 2*(L-mu)
-            l3 = 0 #dual_n.value[3]* 2*(L-mu)
-            l4 = 0 #dual_n.value[4]* 2*(L-mu)
-            l5 = 0 #dual_n.value[5]* 2*(L-mu)
+                        gamma_min = gamma_test
+                        
+                gamma = gamma_min
+                
+            # final solve
+            value, diagnostics = hblyap.lyapunov_heavy_ball_momentum_multistep_smooth_boundary(beta, gamma, mu, L, rho, T, return_all=True)
+            P, p, A_lb, a_lb, dual_n, dual_m, R_vec_m, R_mat_m, R_vec_n, R_mat_n = diagnostics
+            # rho real can be derived from R11 - R22 (scaled)
+            rho_real = 1 - 2*(L-mu)*(R_mat_m[0,0] - R_mat_m[1,1]) /(-2*mu*L*p[0]*(1+beta)**2)
+                
+            phi = A_lb.data[0][2]
+            theta = A_lb.data[0][0]
+                
+            a = P[0,0]
+            b = P[2,2]
+            c = P[1,2]
+            d = P[0,3]
+            e = gamma
+            f = beta
+            p1 = p[0]
+            # p2 = d/(p[0]*(1+beta-rho))
+            # p2 = R_mat_m[4,4]*2*(L-mu) / d
+            # p2 = mu*L*p[0]*(2-rho+beta*(2+beta-2*rho))
+            # p2 = -2*(L-mu)*a*(beta**2-rho)
+            p2 =  b/(1-beta) * (L-mu) #- mu*L*(2*p[0] + mu*L)
+                        
+            l0 = A_lb.data[0][0]
+            l1 = A_lb.data[0][1]
+            l2 = A_lb.data[0][2]
+            l3 = A_lb.data[0][3]
+            l4 = a_lb[0]
+            l5 = a_lb[1]
             
             a_list[i] = a
             b_list[i] = b
@@ -150,6 +167,23 @@ if __name__ == "__main__":
             l3_list[i] = l3
             l4_list[i] = l4
             l5_list[i] = l5
+            
+            beta_list[i] = beta
+            gamma_list[i] = gamma
+
+            idx = 0
+            for ell in range(5):
+                for j in range(5):
+                    if ell <= j:
+                        Res[idx][i] = R_mat_m[ell, j]*2*(L-mu)
+                        idx += 1
+            
+            # idx = 0
+            # for ell in range(4):
+            #     for j in range(4):
+            #         if ell <= j:
+            #             Res[idx][i] = R_mat_n[ell, j]*2*(L-mu)
+            #             idx += 1
 
         # make plots
         fig, axs = plt.subplots(nrows=nrows, ncols=ncols, 
@@ -158,28 +192,54 @@ if __name__ == "__main__":
 
 
         for j, (params, label) in enumerate(zip([a_list, b_list, c_list, d_list, e_list, f_list, p1_list, p2_list, l0_list, l1_list, l2_list, l3_list, l4_list, l5_list], ["a", "b", "c", "d", "e", "f", r"$p_1$", r"$p_2$", "l0", "l1", "l2", "l3", "l4", "l5"])):
-            ax = axs[j]
+            ax = axs[j,0]
             ax.plot(mu_list, params, linewidth=2, color=colors[i_K])
             ax.set_ylabel(r"$%s$" % label, fontsize=17)    
 
             if j == nrows - 1:
                 ax.set_xlabel(r"$\mu$", fontsize=17)
                 
-            ax = axs_all[j]
+            ax = axs_all[j,0]
             lab = r"$K=%.2f$" % K
             ax.plot(mu_list, params, linewidth=2, color=colors[i_K], label=lab)
             ax.set_ylabel(r"$%s$" % label, fontsize=17)    
             
-            # shift = 1
-            # if label == "c":
-            #     ax.plot(mu_list, d_list + shift, linewidth=2, color=colors[i_K], linestyle="--", marker=".", markevery=10)
-            # if label == "b":
-            #     ax.plot(mu_list, e_list + shift, linewidth=2, color=colors[i_K], linestyle="--", marker=".", markevery=10)
-            
+            # if label == r"$p_1$":
+                # compare = a_list*gamma
+                # ax.plot(mu_list, compare, linewidth=2, color=colors[i_K], linestyle="--", marker=".", markevery=10)
+
             if j == nrows - 1:
                 ax.set_xlabel(r"$\mu$", fontsize=17)
             
             # ax.set_yscale("log")
+            
+        idx = 0
+        for ell in range(5):
+            for j in range(5):
+                if ell <= j:
+                    ax = axs_all[idx,1] 
+                    params = Res[idx]
+                    ax.plot(mu_list, params, linewidth=2, color=colors[i_K], label=lab)
+                    ax.set_ylabel(r"$R_{%d,%d}$" % (ell+1, j+1), fontsize=17)
+                    
+                    if idx == nrows - 1:
+                        ax.set_xlabel(r"$\mu$", fontsize=17)
+    
+                    idx += 1
+        
+        # idx = 0
+        # for ell in range(4):
+        #     for j in range(4):
+        #         if ell <= j:
+        #             ax = axs_all[idx,1] 
+        #             params = Res[idx]
+        #             ax.plot(mu_list, params, linewidth=2, color=colors[i_K], label=lab)
+        #             ax.set_ylabel(r"$R_{%d,%d}$" % (ell+1, j+1), fontsize=17)
+                    
+        #             if idx == nrows - 1:
+        #                 ax.set_xlabel(r"$\mu$", fontsize=17)
+    
+        #             idx += 1
 
         fig.suptitle(r"$K=%.2f$" % K, fontsize=17)
 
@@ -191,7 +251,7 @@ if __name__ == "__main__":
         print("Figure saved at \n%s" % fig_fn)
 
     # save
-    axs_all[2].legend(frameon=False)
+    axs_all[2,0].legend(frameon=False)
     figname = "lyap_param_vs_mu_all.png"
     fig_fn = os.path.join(TMP_DIR, figname)
     fig_all.savefig(fig_fn)

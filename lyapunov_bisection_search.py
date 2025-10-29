@@ -6,7 +6,7 @@ import numpy as np
 
 import tools.cycle_utils as cu
 from tools.file_management import write_result_file, write_result_file_multistep
-from algorithms.heavy_ball.lyapunov import lyapunov_heavy_ball_momentum_multistep, lyapunov_heavy_ball_momentum_multistep_fixed, lyapunov_heavy_ball_momentum_multistep_all_history, lyapunov_heavy_ball_momentum_multistep_smooth_boundary
+from algorithms.heavy_ball.lyapunov import lyapunov_heavy_ball_momentum_multistep_smooth_boundary
 from algorithms.nag.lyapunov import lyapunov_accelerated_gradient_strongly_convex
 from algorithms.inexact_gradient_descent.lyapunov import lyapunov_inexact_gradient_descent
 from algorithms.three_operator_splitting.lyapunov import lyapunov_three_operator_splitting
@@ -20,7 +20,7 @@ def lyapunov_bisection_search(method, mu, L, nb_points, precision, rho=1):
     gammas_min_lyap = np.zeros_like(betas)
     gammas_max_lyap = [cu.bound(method=method, L=L, beta=beta) for beta in betas]
     if method == "HB":
-        lyapunov_search = lyapunov_heavy_ball_momentum_multistep
+        lyapunov_search = lyapunov_heavy_ball_momentum_multistep_smooth_boundary
     elif method == "NAG":
         lyapunov_search = lyapunov_accelerated_gradient_strongly_convex
     elif method == "GD":
